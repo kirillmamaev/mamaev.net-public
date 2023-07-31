@@ -1,2 +1,2 @@
 # mamaev.net-public
-mamaev.net Static Website Repository
+[mamaev.net](https://mamaev.net) Static Website Repository
