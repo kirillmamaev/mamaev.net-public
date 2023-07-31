@@ -1,0 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@700&display=swap');
+
+.position-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.content-allign-center {
+  text-align: center;
+}
+
+body {
+  background-color: #f5f5f5;
+}
+
+h1 {
+  font-family: 'Comfortaa', cursive;
+  font-size: 5rem;
+  color: #25272c;
+}
+
+a, a:visited {
+  font-family: 'Comfortaa', cursive;
+  font-size: 1rem;
+  color: #0a2a96;
+}
+
+a:hover {
+  color: #093ce2;
+}
