@@ -1,5 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@700&display=swap');
 
+html {
+  font-family: 'Comfortaa';
+}
+
 .position-center {
   position: absolute;
   top: 50%;
@@ -16,13 +20,14 @@ body {
 }
 
 h1 {
-  font-family: 'Comfortaa', cursive;
+  font-family: 'Comfortaa';
   font-size: 5rem;
   color: #25272c;
 }
 
-a, a:visited {
-  font-family: 'Comfortaa', cursive;
+a,
+a:visited {
+  font-family: 'Comfortaa';
   font-size: 1rem;
   color: #0a2a96;
 }
