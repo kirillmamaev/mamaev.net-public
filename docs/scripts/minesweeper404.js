@@ -264,7 +264,7 @@ class Minesweeper404 {
     this.hud.innerHTML = `
       <span id="ms404-mines">Mines: ${this.state.mines}</span>
       <span id="ms404-flags">Flags: 0</span>
-      <span id="ms404-timer">0.0s</span>
+      <span id="ms404-timer">Time: 0 s</span>
       <button id="ms404-reset" style="background:#333;border:1px solid #555;color:#fff;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:13px">Restart</button>
     `;
     this.container.appendChild(this.hud);
@@ -597,7 +597,7 @@ class Minesweeper404 {
   drawNumber(group, num, size) {
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     text.setAttribute('x', size / 2);
-    text.setAttribute('y', size * 0.625);
+    text.setAttribute('y', size * 0.685);
     text.setAttribute('text-anchor', 'middle');
     text.setAttribute('font-size', Math.round(size * 0.5625));
     text.setAttribute('font-weight', '600');
@@ -716,9 +716,9 @@ class Minesweeper404 {
   startTimer() {
     this.timerInterval = setInterval(() => {
       if (this.state.exploded || this.state.won) return;
-      const t = ((performance.now() - this.state.startTime) / 1000).toFixed(1);
-      this.hudElements.timer.textContent = `${t}s`;
-    }, 100);
+      const t = ((performance.now() - this.state.startTime) / 1000).toFixed();
+      this.hudElements.timer.textContent = `Time: ${t} s`;
+    }, 1000);
   }
 
   stopTimer() {
