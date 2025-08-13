@@ -1,5 +1,10 @@
 /**
  * Minesweeper 404 Game by Kirill Mamaev - kirill@mamaev.net
+ *
+ * A fun Minesweeper variant that displays a 404 error pattern
+ * This script handles the game logic, rendering, and interactions.
+ *
+ * License: MIT
  */
 
 // Numbers rendering colors map
