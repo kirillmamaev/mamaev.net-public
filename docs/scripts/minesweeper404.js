@@ -64,10 +64,10 @@ const NUMBER_COLORS = {
 // Game configuration
 const CONFIG = {
   TILE: 32,
-  ROWS: 16,
-  COLS: 16,
-  MINES: 35,
-  PADDING: 12,
+  ROWS: 15,
+  COLS: 25,
+  MINES: 25,
+  PADDING: 0,
 };
 
 // Mobile / input tweaks
@@ -89,6 +89,7 @@ function initialise() {
 class Minesweeper404 {
   constructor() {
     this.resetPageStyles();
+    this.eventsBound = false;
 
     // Inject SVG sprite once
     if (!document.getElementById('ms404-sprite')) {
@@ -167,7 +168,7 @@ class Minesweeper404 {
       0: ['XXX', 'X.X', 'X.X', 'X.X', 'XXX'],
     };
     const sequence = ['4', '0', '4'];
-    const patternWidth = sequence.length * 3 + (sequence.length - 1) * 1; // 11
+    const patternWidth = sequence.length * 3 + (sequence.length - 1) * 1;
     const patternHeight = 5;
     const startRow = Math.floor((ROWS - patternHeight) / 2);
     const startCol = Math.floor((COLS - patternWidth) / 2);
@@ -233,87 +234,115 @@ class Minesweeper404 {
   }
 
   attachResizeHandler() {
-    window.addEventListener('resize', () => this.scaleBoard());
-    this.scaleBoard();
+    window.addEventListener('resize', () => this.handleResize());
+    this.handleResize();
   }
 
-  scaleBoard() {
+  handleResize() {
+    this.computeTileSize();
+    this.positionBoard();
+    this.redrawBoard();
+  }
+
+  computeTileSize() {
+    const hudH = this.hud ? this.hud.offsetHeight + 12 : 0;
+    const availH = window.innerHeight - hudH;
+    const availW = window.innerWidth;
+    const tile = Math.floor(Math.min(availW / CONFIG.COLS, availH / CONFIG.ROWS));
+    CONFIG.TILE = Math.max(18, tile);
+  }
+
+  positionBoard() {
     if (!this.svgRoot) return;
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    const boardW = CONFIG.COLS * CONFIG.TILE + CONFIG.PADDING * 2;
-    const boardH = CONFIG.ROWS * CONFIG.TILE + CONFIG.PADDING * 2 + 60;
-    const scale = Math.min(w / boardW, h / boardH);
-    this.container.style.transform = `translate(-50%, -50%) scale(${scale})`;
+    const hudH = this.hud ? this.hud.offsetHeight + 12 : 0;
+    const boardW = CONFIG.COLS * CONFIG.TILE;
+    const boardH = CONFIG.ROWS * CONFIG.TILE;
+    const left = (window.innerWidth - boardW) / 2;
+    const topExtraSpace = window.innerHeight - hudH - boardH;
+    const top = hudH + Math.max(0, topExtraSpace / 2);
+    this.svgRoot.setAttribute('width', boardW);
+    this.svgRoot.setAttribute('height', boardH);
+    this.svgRoot.setAttribute('viewBox', `0 0 ${boardW} ${boardH}`);
+    this.svgRoot.style.left = `${left}px`;
+    this.svgRoot.style.top = `${top}px`;
+  }
+
+  redrawBoard() {
+    if (!this.boardGroup) return;
+    // Rebuild tile transforms to new size
+    this.drawTiles();
   }
 
   resetPageStyles() {
-    document.body.style.margin = 0;
-    document.body.style.padding = 0;
-    document.body.style.overflow = 'hidden';
-    document.body.style.display = 'flex';
-    document.body.style.alignItems = 'center';
-    document.body.style.justifyContent = 'center';
-    document.body.style.background = 'radial-gradient(circle at 50% 40%, #222, #000)';
-    document.body.style.fontFamily = 'Arial, sans-serif';
-    document.body.style.color = '#fff';
-    document.body.style.userSelect = 'none';
+    Object.assign(document.body.style, {
+      margin: 0,
+      padding: 0,
+      overflow: 'hidden',
+      background: '#0f0f0fff',
+      fontFamily: 'Arial, sans-serif',
+      color: '#fff',
+      userSelect: 'none',
+    });
   }
 
   render() {
-    // Container
     this.container = document.createElement('div');
     this.container.id = 'ms404-container';
-    this.container.style.position = 'absolute';
-    this.container.style.top = '50%';
-    this.container.style.left = '50%';
-    this.container.style.transformOrigin = 'top left';
-    this.container.style.transition = 'transform 0.2s ease';
+    Object.assign(this.container.style, {
+      position: 'fixed',
+      inset: '0',
+      width: '100vw',
+      height: '100vh',
+    });
     document.body.appendChild(this.container);
 
-    // HUD
-    const hud = document.createElement('div');
-    hud.style.display = 'flex';
-    hud.style.alignItems = 'center';
-    hud.style.justifyContent = 'space-between';
-    hud.style.width = `${CONFIG.COLS * CONFIG.TILE + CONFIG.PADDING * 2}px`;
-    hud.style.padding = '8px 12px';
-    hud.style.boxSizing = 'border-box';
-    hud.style.fontSize = '18px';
-    hud.style.fontWeight = '600';
-    hud.style.letterSpacing = '1px';
-    hud.innerHTML = `
-      <div style="display:flex;gap:16px;align-items:center">
-        <span id="ms404-mines">Mines: ${this.state.mines}</span>
-        <span id="ms404-flags">Flags: 0</span>
-        <span id="ms404-timer">0.0s</span>
-      </div>
-      <button id="ms404-reset" style="background:#333;border:1px solid #555;color:#fff;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:14px">Restart</button>
+    // HUD (fixed top center)
+    this.hud = document.createElement('div');
+    Object.assign(this.hud.style, {
+      position: 'fixed',
+      top: '8px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      display: 'flex',
+      gap: '18px',
+      alignItems: 'center',
+      background: 'rgba(0,0,0,.35)',
+      padding: '6px 14px',
+      border: '1px solid #444',
+      borderRadius: '10px',
+      boxShadow: '0 4px 18px -6px rgba(0,0,0,.6)',
+      fontSize: '14px',
+      fontWeight: '600',
+      backdropFilter: 'blur(6px)',
+      zIndex: 10,
+      letterSpacing: '1px',
+    });
+    this.hud.innerHTML = `
+      <span id="ms404-mines">Mines: ${this.state.mines}</span>
+      <span id="ms404-flags">Flags: 0</span>
+      <span id="ms404-timer">0.0s</span>
+      <button id="ms404-reset" style="background:#333;border:1px solid #555;color:#fff;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:13px">Restart</button>
     `;
-    this.container.appendChild(hud);
+    this.container.appendChild(this.hud);
+    this.hud.querySelector('#ms404-reset').addEventListener('click', () => this.resetGame());
 
-    hud.querySelector('#ms404-reset').addEventListener('click', () => this.resetGame());
-
-    // SVG root
+    // Create board svg
     this.svgRoot = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    this.svgRoot.setAttribute('width', CONFIG.COLS * CONFIG.TILE + CONFIG.PADDING * 2);
-    this.svgRoot.setAttribute('height', CONFIG.ROWS * CONFIG.TILE + CONFIG.PADDING * 2);
-    this.svgRoot.setAttribute(
-      'viewBox',
-      `0 0 ${CONFIG.COLS * CONFIG.TILE + CONFIG.PADDING * 2} ${CONFIG.ROWS * CONFIG.TILE + CONFIG.PADDING * 2}`
-    );
-    this.svgRoot.style.background = 'linear-gradient(#111,#0d0d0d)';
-    this.svgRoot.style.border = '2px solid #444';
-    this.svgRoot.style.borderRadius = '12px';
-    this.svgRoot.style.boxShadow = '0 0 24px -6px rgba(0,0,0,0.8), 0 0 40px -2px rgba(100,100,255,0.2)';
+    Object.assign(this.svgRoot.style, {
+      position: 'absolute',
+      background: '#111',
+      border: '2px solid #444',
+      borderRadius: '16px',
+      boxShadow: '0 0 60px -6px rgba(0,0,0,.85), 0 0 50px -4px rgba(52, 107, 245, 1)',
+    });
     this.container.appendChild(this.svgRoot);
 
-    // Board group
+    // Group for tiles
     this.boardGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    this.boardGroup.setAttribute('transform', `translate(${CONFIG.PADDING},${CONFIG.PADDING})`);
     this.svgRoot.appendChild(this.boardGroup);
 
-    this.drawTiles();
+    // Compute initial size + draw
+    this.handleResize();
     this.startTimer();
   }
 
@@ -332,129 +361,300 @@ class Minesweeper404 {
         this.renderCell(g, cell);
       }
     }
-    // Events delegated
-    this.svgRoot.addEventListener('contextmenu', (e) => {
-      const target = e.target.closest('g[data-r]');
-      if (!target) return;
-      e.preventDefault();
-      const r = +target.getAttribute('data-r');
-      const c = +target.getAttribute('data-c');
-      this.toggleFlag(r, c);
-    });
-    // Pointer handlers (desktop + touch)
-    let longPressTimer = null;
-    let longPressTarget = null;
-    const clearLongPress = () => {
-      if (longPressTimer) {
-        clearTimeout(longPressTimer);
-        longPressTimer = null;
-      }
-      longPressTarget = null;
-    };
-    this.svgRoot.addEventListener('pointerdown', (e) => {
-      const target = e.target.closest('g[data-r]');
-      if (!target) return;
-      if (e.button !== 0) return;
-      if (IS_MOBILE) {
-        longPressTarget = target;
-        longPressTimer = setTimeout(() => {
-          if (!longPressTarget) return;
-          const r = +longPressTarget.getAttribute('data-r');
-          const c = +longPressTarget.getAttribute('data-c');
-          this.toggleFlag(r, c);
-          // Haptic
-          if (navigator.vibrate) navigator.vibrate(10);
-          longPressTarget = null;
-        }, LONG_PRESS_MS);
-      }
-    });
-    this.svgRoot.addEventListener('pointerup', (e) => {
-      const target = e.target.closest('g[data-r]');
-      if (!target) {
-        clearLongPress();
-        return;
-      }
-      if (e.button !== 0) return;
-      if (IS_MOBILE) {
-        if (longPressTarget === target) {
-          // Treat as tap open
+    // Grid lines overlay (draw after cells) inside boardGroup so it is cleared next redraw
+    const gridGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    gridGroup.setAttribute('data-grid-lines', '1');
+    gridGroup.setAttribute('stroke', '#2a2a2a');
+    gridGroup.setAttribute('stroke-width', Math.max(1, Math.floor(TILE * 0.04)));
+    gridGroup.setAttribute('pointer-events', 'none');
+    for (let c = 1; c < COLS; c++) {
+      const x = c * TILE + 0.5;
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', x);
+      line.setAttribute('y1', 0);
+      line.setAttribute('x2', x);
+      line.setAttribute('y2', ROWS * TILE);
+      gridGroup.appendChild(line);
+    }
+    for (let r = 1; r < ROWS; r++) {
+      const y = r * TILE + 0.5;
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', 0);
+      line.setAttribute('y1', y);
+      line.setAttribute('x2', COLS * TILE);
+      line.setAttribute('y2', y);
+      gridGroup.appendChild(line);
+    }
+    this.boardGroup.appendChild(gridGroup);
+
+    if (!this.eventsBound) {
+      // Events delegated (bind once)
+      let longPressTimer = null;
+      let longPressTarget = null;
+      const clearLongPress = () => {
+        if (longPressTimer) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+        longPressTarget = null;
+      };
+      this.svgRoot.addEventListener('contextmenu', (e) => {
+        const target = e.target.closest('g[data-r]');
+        if (!target) return;
+        e.preventDefault();
+        const r = +target.getAttribute('data-r');
+        const c = +target.getAttribute('data-c');
+        this.toggleFlag(r, c);
+      });
+      this.svgRoot.addEventListener('pointerdown', (e) => {
+        const target = e.target.closest('g[data-r]');
+        if (!target) return;
+        if (e.button !== 0) return;
+        if (IS_MOBILE) {
+          longPressTarget = target;
+          longPressTimer = setTimeout(() => {
+            if (!longPressTarget) return;
+            const r = +longPressTarget.getAttribute('data-r');
+            const c = +longPressTarget.getAttribute('data-c');
+            this.toggleFlag(r, c);
+            if (navigator.vibrate) navigator.vibrate(10);
+            longPressTarget = null;
+          }, LONG_PRESS_MS);
+        }
+      });
+      this.svgRoot.addEventListener('pointerup', (e) => {
+        const target = e.target.closest('g[data-r]');
+        if (!target) {
           clearLongPress();
+          return;
+        }
+        if (e.button !== 0) return;
+        if (IS_MOBILE) {
+          if (longPressTarget === target) {
+            clearLongPress();
+            const r = +target.getAttribute('data-r');
+            const c = +target.getAttribute('data-c');
+            this.openCell(r, c);
+          }
+        } else {
           const r = +target.getAttribute('data-r');
           const c = +target.getAttribute('data-c');
           this.openCell(r, c);
         }
-      } else {
-        const r = +target.getAttribute('data-r');
-        const c = +target.getAttribute('data-c');
-        this.openCell(r, c);
-      }
-    });
-    this.svgRoot.addEventListener('pointerleave', clearLongPress, true);
-    this.svgRoot.addEventListener('pointercancel', clearLongPress, true);
+      });
+      this.svgRoot.addEventListener('pointerleave', clearLongPress, true);
+      this.svgRoot.addEventListener('pointercancel', clearLongPress, true);
+      this.eventsBound = true;
+    }
   }
 
   renderCell(group, cell) {
     while (group.firstChild) group.removeChild(group.firstChild);
-    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    const { TILE } = CONFIG;
+
     if (cell.permanent) {
-      use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#tile-404');
-      group.appendChild(use);
+      // 404 tile - bright blue distinctive styling
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', 0);
+      rect.setAttribute('y', 0);
+      rect.setAttribute('width', TILE);
+      rect.setAttribute('height', TILE);
+      rect.setAttribute('rx', Math.max(2, TILE * 0.125));
+      rect.setAttribute('ry', Math.max(2, TILE * 0.125));
+      rect.setAttribute('fill', 'rgba(52, 107, 245, 0.8)');
+      rect.setAttribute('stroke', 'rgba(52, 107, 245, 1)');
+      rect.setAttribute('stroke-width', Math.max(2, TILE * 0.0625));
+      group.appendChild(rect);
+
+      // Inner glow with blue highlight
       const glow = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      glow.setAttribute('x', 6);
-      glow.setAttribute('y', 6);
-      glow.setAttribute('width', 20);
-      glow.setAttribute('height', 20);
+      const inset = Math.max(2, TILE * 0.1875);
+      glow.setAttribute('x', inset);
+      glow.setAttribute('y', inset);
+      glow.setAttribute('width', TILE - inset * 2);
+      glow.setAttribute('height', TILE - inset * 2);
+      glow.setAttribute('rx', Math.max(1, TILE * 0.0625));
+      glow.setAttribute('ry', Math.max(1, TILE * 0.0625));
       glow.setAttribute('fill', 'none');
-      glow.setAttribute('stroke', '#888');
-      glow.setAttribute('stroke-width', '1');
-      glow.setAttribute('opacity', '0.3');
+      glow.setAttribute('stroke', 'rgba(100, 150, 255, 0.8)');
+      glow.setAttribute('stroke-width', '2');
+      glow.setAttribute('opacity', '0.6');
       glow.classList.add('pulse-glow');
       group.appendChild(glow);
+
+      // Add a subtle inner shine
+      const shine = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      const shineInset = Math.max(1, TILE * 0.125);
+      shine.setAttribute('x', shineInset);
+      shine.setAttribute('y', shineInset);
+      shine.setAttribute('width', TILE - shineInset * 2);
+      shine.setAttribute('height', Math.max(2, TILE * 0.15));
+      shine.setAttribute('rx', Math.max(1, TILE * 0.0625));
+      shine.setAttribute('ry', Math.max(1, TILE * 0.0625));
+      shine.setAttribute('fill', 'rgba(180, 200, 255, 0.3)');
+      group.appendChild(shine);
       return;
     }
 
     if (this.state.exploded && cell.mine) {
-      use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#mine');
-      use.classList.add('cell-anim-explode');
-      group.appendChild(use);
+      // Draw mine directly
+      this.drawMine(group, TILE);
       return;
     }
 
     if (!cell.open) {
       if (cell.flag) {
-        use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#flag');
-        use.classList.add('cell-anim-flag');
+        this.drawFlag(group, TILE);
       } else {
-        use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#tile-closed');
+        this.drawClosedTile(group, TILE);
       }
-      group.appendChild(use);
     } else {
       if (cell.mine) {
-        use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#tile-blast');
-        use.classList.add('cell-anim-explode');
-        group.appendChild(use);
-        const m = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-        m.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#mine');
-        m.classList.add('cell-anim-explode');
-        group.appendChild(m);
+        this.drawBlastTile(group, TILE);
+        this.drawMine(group, TILE);
       } else {
-        use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#tile-open');
-        use.classList.add('cell-anim-open');
-        group.appendChild(use);
+        this.drawOpenTile(group, TILE);
         if (cell.num > 0) {
-          const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-          t.setAttribute('x', 16);
-          t.setAttribute('y', 19);
-          t.setAttribute('text-anchor', 'middle');
-          t.setAttribute('font-size', '18');
-          t.setAttribute('font-weight', '600');
-          t.setAttribute('fill', NUMBER_COLORS[cell.num] || '#fff');
-          t.textContent = cell.num;
-          t.classList.add('cell-anim-open');
-          group.appendChild(t);
+          this.drawNumber(group, cell.num, TILE);
         }
       }
     }
+  }
+
+  drawClosedTile(group, size) {
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', 0);
+    rect.setAttribute('y', 0);
+    rect.setAttribute('width', size);
+    rect.setAttribute('height', size);
+    rect.setAttribute('rx', Math.max(2, size * 0.125));
+    rect.setAttribute('ry', Math.max(2, size * 0.125));
+    rect.setAttribute('fill', '#2e2e2e');
+    rect.setAttribute('stroke', '#555');
+    rect.setAttribute('stroke-width', Math.max(1, size * 0.0625));
+    rect.classList.add('cell-anim-open');
+    group.appendChild(rect);
+  }
+
+  drawOpenTile(group, size) {
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', 0);
+    rect.setAttribute('y', 0);
+    rect.setAttribute('width', size);
+    rect.setAttribute('height', size);
+    rect.setAttribute('rx', Math.max(2, size * 0.125));
+    rect.setAttribute('ry', Math.max(2, size * 0.125));
+    rect.setAttribute('fill', '#1a1a1a');
+    rect.setAttribute('stroke', '#444');
+    rect.setAttribute('stroke-width', Math.max(1, size * 0.03125));
+    rect.classList.add('cell-anim-open');
+    group.appendChild(rect);
+  }
+
+  drawBlastTile(group, size) {
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', 0);
+    rect.setAttribute('y', 0);
+    rect.setAttribute('width', size);
+    rect.setAttribute('height', size);
+    rect.setAttribute('rx', Math.max(2, size * 0.125));
+    rect.setAttribute('ry', Math.max(2, size * 0.125));
+    rect.setAttribute('fill', '#4a0000');
+    rect.setAttribute('stroke', '#aa0000');
+    rect.setAttribute('stroke-width', Math.max(1, size * 0.0625));
+    rect.classList.add('cell-anim-explode');
+    group.appendChild(rect);
+  }
+
+  drawFlag(group, size) {
+    // Base tile
+    this.drawClosedTile(group, size);
+
+    // Flag pole
+    const pole = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    const poleX = size * 0.34375; // 11/32
+    const poleY = size * 0.1875; // 6/32
+    const poleW = size * 0.0625; // 2/32
+    const poleH = size * 0.625; // 20/32
+    pole.setAttribute('x', poleX);
+    pole.setAttribute('y', poleY);
+    pole.setAttribute('width', poleW);
+    pole.setAttribute('height', poleH);
+    pole.setAttribute('fill', '#c0c0c0');
+    pole.classList.add('cell-anim-flag');
+    group.appendChild(pole);
+
+    // Flag
+    const flag = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    const flagPath = `M${size * 0.375} ${size * 0.8125}V${size * 0.1875}l${size * 0.3125} ${size * 0.125}-${
+      size * 0.3125
+    } ${size * 0.125}`;
+    flag.setAttribute('d', flagPath);
+    flag.setAttribute('fill', '#ff3b30');
+    flag.classList.add('cell-anim-flag');
+    group.appendChild(flag);
+  }
+
+  drawMine(group, size) {
+    // Mine body
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', size / 2);
+    circle.setAttribute('cy', size / 2);
+    circle.setAttribute('r', size * 0.25); // 8/32
+    circle.setAttribute('fill', '#000');
+    circle.setAttribute('stroke', '#555');
+    circle.setAttribute('stroke-width', Math.max(1, size * 0.0625));
+    circle.classList.add('cell-anim-explode');
+    group.appendChild(circle);
+
+    // Mine spikes
+    const spikes = [
+      [0.5, 0.125, 0.5, 0.3125], // top
+      [0.5, 0.6875, 0.5, 0.875], // bottom
+      [0.125, 0.5, 0.3125, 0.5], // left
+      [0.6875, 0.5, 0.875, 0.5], // right
+      [0.21875, 0.21875, 0.34375, 0.34375], // top-left
+      [0.65625, 0.65625, 0.78125, 0.78125], // bottom-right
+      [0.65625, 0.21875, 0.78125, 0.34375], // top-right
+      [0.21875, 0.65625, 0.34375, 0.78125], // bottom-left
+    ];
+
+    spikes.forEach(([x1, y1, x2, y2]) => {
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', size * x1);
+      line.setAttribute('y1', size * y1);
+      line.setAttribute('x2', size * x2);
+      line.setAttribute('y2', size * y2);
+      line.setAttribute('stroke', '#555');
+      line.setAttribute('stroke-width', Math.max(1, size * 0.0625));
+      line.setAttribute('stroke-linecap', 'round');
+      line.classList.add('cell-anim-explode');
+      group.appendChild(line);
+    });
+
+    // Inner highlight
+    const inner = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    inner.setAttribute('cx', size / 2);
+    inner.setAttribute('cy', size / 2);
+    inner.setAttribute('r', size * 0.125); // 4/32
+    inner.setAttribute('fill', '#444');
+    inner.setAttribute('stroke', '#888');
+    inner.setAttribute('stroke-width', '1');
+    inner.classList.add('cell-anim-explode');
+    group.appendChild(inner);
+  }
+
+  drawNumber(group, num, size) {
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', size / 2);
+    text.setAttribute('y', size * 0.625); // 20/32
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('font-size', Math.round(size * 0.5625)); // 18/32
+    text.setAttribute('font-weight', '600');
+    text.setAttribute('fill', NUMBER_COLORS[num] || '#fff');
+    text.textContent = num;
+    text.classList.add('cell-anim-open');
+    group.appendChild(text);
   }
 
   toggleFlag(r, c) {
@@ -587,7 +787,7 @@ class Minesweeper404 {
     overlay.style.background = 'rgba(0,0,0,0.55)';
     overlay.classList.add('overlay-fade');
     overlay.innerHTML = `<div style="text-align:center;font-size:38px;font-weight:700;letter-spacing:2px;">${
-      won ? 'YOU CLEARED AROUND 404!' : 'BOOM!'
+      won ? 'CONGRATULATIONS! YOU WON!' : 'BOOM!'
     }<div style="margin-top:16px;font-size:16px;font-weight:400"><button id="ms404-play-again" style="background:#333;border:1px solid #555;color:#fff;padding:10px 18px;border-radius:8px;cursor:pointer;font-size:14px">Play Again</button></div></div>`;
     this.container.appendChild(overlay);
     overlay.querySelector('#ms404-play-again').addEventListener('click', () => this.resetGame());
@@ -596,11 +796,11 @@ class Minesweeper404 {
   resetGame() {
     this.stopTimer();
     this.container.remove();
+    this.eventsBound = false; // Reset events flag so they get bound again
     this.state = this.createEmptyState();
     this.generatePermanent404Pattern();
     this.placeMines();
     this.calculateNumbers();
     this.render();
-    this.scaleBoard();
   }
 }
