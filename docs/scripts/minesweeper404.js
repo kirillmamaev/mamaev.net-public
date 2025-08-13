@@ -57,7 +57,9 @@ class Minesweeper404 {
   constructor() {
     this.resetPageStyles();
     this.eventsBound = false;
-    this.hudElements = {}; // Cache HUD elements
+    this.hudElements = {};
+    this.longPressTarget = null;
+    this.longPressTimer = null;
 
     this.state = this.createEmptyState();
     this.generatePermanent404Pattern();
@@ -117,7 +119,7 @@ class Minesweeper404 {
       exploded: false,
       won: false,
       startTime: performance.now(),
-      permanentCount: 0, // Track permanent cell count
+      permanentCount: 0,
     };
   }
 
@@ -139,7 +141,7 @@ class Minesweeper404 {
             cell.permanent = true;
             cell.open = true;
             cell.num = 0;
-            this.state.permanentCount++; // Increment permanent cell count
+            this.state.permanentCount++;
           }
         });
       });
@@ -320,7 +322,7 @@ class Minesweeper404 {
         this.renderCell(g, cell);
       }
     }
-    // Grid lines overlay (draw after cells) inside boardGroup so it is cleared next redraw
+    // Grid lines overlay (draw after cells)
     const gridGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     gridGroup.setAttribute('data-grid-lines', '1');
     gridGroup.setAttribute('stroke', '#2a2a2a');
@@ -369,14 +371,16 @@ class Minesweeper404 {
   handlePointerDown(e) {
     const target = e.target.closest('g[data-r]');
     if (!target || e.button !== 0) return;
+
     if (IS_MOBILE) {
+      e.preventDefault();
       this.longPressTarget = target;
       this.longPressTimer = setTimeout(() => {
         if (!this.longPressTarget) return;
         const r = +this.longPressTarget.getAttribute('data-r');
         const c = +this.longPressTarget.getAttribute('data-c');
         this.toggleFlag(r, c);
-        if (navigator.vibrate) navigator.vibrate(10);
+        if (navigator.vibrate) navigator.vibrate(50);
         this.longPressTarget = null;
       }, LONG_PRESS_MS);
     }
@@ -389,12 +393,18 @@ class Minesweeper404 {
       return;
     }
     if (e.button !== 0) return;
+
     const r = +target.getAttribute('data-r');
     const c = +target.getAttribute('data-c');
-    if (IS_MOBILE && this.longPressTarget === target) {
-      this.clearLongPress();
-      this.openCell(r, c);
+
+    if (IS_MOBILE) {
+      if (this.longPressTarget === target && this.longPressTimer) {
+        // Short tap - open cell
+        this.clearLongPress();
+        this.openCell(r, c);
+      }
     } else {
+      // Desktop - simple click to open
       this.openCell(r, c);
     }
   }
@@ -412,7 +422,7 @@ class Minesweeper404 {
     const { TILE } = CONFIG;
 
     if (cell.permanent) {
-      // 404 tile - bright blue distinctive styling
+      // 404 tile - bright blue styling
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       rect.setAttribute('x', 0);
       rect.setAttribute('y', 0);
@@ -480,7 +490,7 @@ class Minesweeper404 {
     }
   }
 
-  // Optimized rect creation with common attributes
+  // Rect creation with common attributes
   createRect(x, y, width, height, rx, ry, fill, stroke, strokeWidth) {
     const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     rect.setAttribute('x', x);
@@ -564,7 +574,7 @@ class Minesweeper404 {
     circle.classList.add('cell-anim-explode');
     group.appendChild(circle);
 
-    // Mine spikes - optimized coordinates
+    // Mine spikes
     const spikeCoords = [
       [0.5, 0.125, 0.5, 0.3125],
       [0.5, 0.6875, 0.5, 0.875],
