@@ -61,6 +61,12 @@ class Minesweeper404 {
     this.longPressTarget = null;
     this.longPressTimer = null;
 
+    // Bind event handlers once to maintain references for removal
+    this.boundHandleContextMenu = this.handleContextMenu.bind(this);
+    this.boundHandlePointerDown = this.handlePointerDown.bind(this);
+    this.boundHandlePointerUp = this.handlePointerUp.bind(this);
+    this.boundClearLongPress = this.clearLongPress.bind(this);
+
     this.state = this.createEmptyState();
     this.generatePermanent404Pattern();
     this.placeMines();
@@ -350,11 +356,11 @@ class Minesweeper404 {
 
     // Consolidate event listeners
     if (!this.eventsBound) {
-      this.svgRoot.addEventListener('contextmenu', this.handleContextMenu.bind(this));
-      this.svgRoot.addEventListener('pointerdown', this.handlePointerDown.bind(this));
-      this.svgRoot.addEventListener('pointerup', this.handlePointerUp.bind(this));
-      this.svgRoot.addEventListener('pointerleave', this.clearLongPress.bind(this), true);
-      this.svgRoot.addEventListener('pointercancel', this.clearLongPress.bind(this), true);
+      this.svgRoot.addEventListener('contextmenu', this.boundHandleContextMenu);
+      this.svgRoot.addEventListener('pointerdown', this.boundHandlePointerDown);
+      this.svgRoot.addEventListener('pointerup', this.boundHandlePointerUp);
+      this.svgRoot.addEventListener('pointerleave', this.boundClearLongPress, true);
+      this.svgRoot.addEventListener('pointercancel', this.boundClearLongPress, true);
       this.eventsBound = true;
     }
   }
@@ -766,10 +772,26 @@ class Minesweeper404 {
     overlay.querySelector('#ms404-play-again').addEventListener('click', () => this.resetGame());
   }
 
-  resetGame() {
+  cleanup() {
+    // Clean up timers and event state
     this.stopTimer();
-    this.container.remove();
+    this.clearLongPress();
+
+    // Remove event listeners if they exist
+    if (this.svgRoot && this.eventsBound) {
+      this.svgRoot.removeEventListener('contextmenu', this.boundHandleContextMenu);
+      this.svgRoot.removeEventListener('pointerdown', this.boundHandlePointerDown);
+      this.svgRoot.removeEventListener('pointerup', this.boundHandlePointerUp);
+      this.svgRoot.removeEventListener('pointerleave', this.boundClearLongPress, true);
+      this.svgRoot.removeEventListener('pointercancel', this.boundClearLongPress, true);
+    }
+
     this.eventsBound = false;
+  }
+
+  resetGame() {
+    this.cleanup();
+    this.container.remove();
     this.state = this.createEmptyState();
     this.generatePermanent404Pattern();
     this.placeMines();
