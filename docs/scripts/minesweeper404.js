@@ -740,8 +740,8 @@ class Minesweeper404 {
     overlay.classList.add('overlay-fade');
     overlay.innerHTML = `<div style="text-align:center;font-size:38px;font-weight:700;letter-spacing:2px;">${
       won
-        ? 'Congratulations!<br><br>The page is not found,<br>but the winner is!'
-        : 'Page is not Found!<br><br>But you found a mine!'
+        ? 'Congratulations! 🎉<br><br>The page is not found,<br>but the winner is! 😉'
+        : 'The page is not found,<br>but the mine is! 😉'
     }<div style="margin-top:16px;font-size:16px;font-weight:400"><button id="ms404-play-again" style="background:#333;border:1px solid #555;color:#fff;padding:10px 18px;border-radius:8px;cursor:pointer;font-size:14px">Play Again</button></div></div>`;
     this.container.appendChild(overlay);
     overlay.querySelector('#ms404-play-again').addEventListener('click', () => this.resetGame());
