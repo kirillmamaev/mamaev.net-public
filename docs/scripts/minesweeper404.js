@@ -2,7 +2,7 @@
  * Minesweeper 404 Game by Kirill Mamaev - kirill@mamaev.net
  */
 
-// SVG SYMBOL SPRITE (all graphics live here)
+// SVG SYMBOL SPRITE
 const SVG_SYMBOL_SPRITE = `
 <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden">
   <defs>
@@ -68,6 +68,7 @@ const CONFIG = {
   COLS: 25,
   MINES: 25,
   PADDING: 0,
+  MARGIN: 60,
 };
 
 // Mobile / input tweaks
@@ -246,8 +247,9 @@ class Minesweeper404 {
 
   computeTileSize() {
     const hudH = this.hud ? this.hud.offsetHeight + 12 : 0;
-    const availH = window.innerHeight - hudH;
-    const availW = window.innerWidth;
+    const margin = CONFIG.MARGIN;
+    const availH = window.innerHeight - hudH - margin * 2;
+    const availW = window.innerWidth - margin * 2;
     const tile = Math.floor(Math.min(availW / CONFIG.COLS, availH / CONFIG.ROWS));
     CONFIG.TILE = Math.max(18, tile);
   }
@@ -255,11 +257,12 @@ class Minesweeper404 {
   positionBoard() {
     if (!this.svgRoot) return;
     const hudH = this.hud ? this.hud.offsetHeight + 12 : 0;
+    const margin = CONFIG.MARGIN;
     const boardW = CONFIG.COLS * CONFIG.TILE;
     const boardH = CONFIG.ROWS * CONFIG.TILE;
-    const left = (window.innerWidth - boardW) / 2;
-    const topExtraSpace = window.innerHeight - hudH - boardH;
-    const top = hudH + Math.max(0, topExtraSpace / 2);
+    const left = Math.max(margin, (window.innerWidth - boardW) / 2);
+    const topExtraSpace = window.innerHeight - hudH - boardH - margin * 2;
+    const top = hudH + margin + Math.max(0, topExtraSpace / 2);
     this.svgRoot.setAttribute('width', boardW);
     this.svgRoot.setAttribute('height', boardH);
     this.svgRoot.setAttribute('viewBox', `0 0 ${boardW} ${boardH}`);
@@ -333,7 +336,7 @@ class Minesweeper404 {
       background: '#111',
       border: '2px solid #444',
       borderRadius: '16px',
-      boxShadow: '0 0 60px -6px rgba(0,0,0,.85), 0 0 50px -4px rgba(52, 107, 245, 1)',
+      boxShadow: '0 0 60px -6px #111, 0 0 25px -4px rgba(54, 89, 177, 1)',
     });
     this.container.appendChild(this.svgRoot);
 
@@ -787,7 +790,9 @@ class Minesweeper404 {
     overlay.style.background = 'rgba(0,0,0,0.55)';
     overlay.classList.add('overlay-fade');
     overlay.innerHTML = `<div style="text-align:center;font-size:38px;font-weight:700;letter-spacing:2px;">${
-      won ? 'CONGRATULATIONS! YOU WON!' : 'BOOM!'
+      won
+        ? 'Congratulations!<br><br>The page is not found,<br>but the winner is!'
+        : 'Page is not Found!<br><br>But you found a mine!'
     }<div style="margin-top:16px;font-size:16px;font-weight:400"><button id="ms404-play-again" style="background:#333;border:1px solid #555;color:#fff;padding:10px 18px;border-radius:8px;cursor:pointer;font-size:14px">Play Again</button></div></div>`;
     this.container.appendChild(overlay);
     overlay.querySelector('#ms404-play-again').addEventListener('click', () => this.resetGame());
@@ -796,7 +801,7 @@ class Minesweeper404 {
   resetGame() {
     this.stopTimer();
     this.container.remove();
-    this.eventsBound = false; // Reset events flag so they get bound again
+    this.eventsBound = false;
     this.state = this.createEmptyState();
     this.generatePermanent404Pattern();
     this.placeMines();
