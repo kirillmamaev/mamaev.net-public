@@ -5,15 +5,6 @@
 // Numbers rendering colors map
 const NUMBER_COLORS = ['', '#4fc3f7', '#81c784', '#ffb74d', '#9d60deff', '#ef5350', '#26c6da', '#ffffff', '#f472e7ff'];
 
-// Game configuration
-const CONFIG = {
-  TILE: 32,
-  ROWS: 15,
-  COLS: 25,
-  MINES: 25,
-  MARGIN: 60,
-};
-
 // Direction vectors for adjacent cells
 const DIRECTIONS = [
   [-1, -1],
@@ -35,6 +26,15 @@ const PATTERN_DIGITS = {
 // Mobile / input configuration
 const LONG_PRESS_MS = 450;
 const IS_MOBILE = 'ontouchstart' in window || (navigator.maxTouchPoints || 0) > 1;
+
+// Game configuration
+const CONFIG = {
+  TILE: 32,
+  ROWS: IS_MOBILE ? 9 : 15,
+  COLS: IS_MOBILE ? 15 : 25,
+  MINES: IS_MOBILE ? 10 : 25,
+  MARGIN: IS_MOBILE ? 20 : 60,
+};
 
 // Initialise on load
 if (document.readyState === 'complete') {
@@ -112,6 +112,7 @@ class Minesweeper404 {
       exploded: false,
       won: false,
       startTime: performance.now(),
+      permanentCount: 0, // Track permanent cell count
     };
   }
 
@@ -133,6 +134,7 @@ class Minesweeper404 {
             cell.permanent = true;
             cell.open = true;
             cell.num = 0;
+            this.state.permanentCount++; // Increment permanent cell count
           }
         });
       });
@@ -339,65 +341,65 @@ class Minesweeper404 {
     }
     this.boardGroup.appendChild(gridGroup);
 
+    // Consolidate event listeners
     if (!this.eventsBound) {
-      // Events delegated (bind once)
-      let longPressTimer = null;
-      let longPressTarget = null;
-      const clearLongPress = () => {
-        if (longPressTimer) {
-          clearTimeout(longPressTimer);
-          longPressTimer = null;
-        }
-        longPressTarget = null;
-      };
-      this.svgRoot.addEventListener('contextmenu', (e) => {
-        const target = e.target.closest('g[data-r]');
-        if (!target) return;
-        e.preventDefault();
-        const r = +target.getAttribute('data-r');
-        const c = +target.getAttribute('data-c');
-        this.toggleFlag(r, c);
-      });
-      this.svgRoot.addEventListener('pointerdown', (e) => {
-        const target = e.target.closest('g[data-r]');
-        if (!target) return;
-        if (e.button !== 0) return;
-        if (IS_MOBILE) {
-          longPressTarget = target;
-          longPressTimer = setTimeout(() => {
-            if (!longPressTarget) return;
-            const r = +longPressTarget.getAttribute('data-r');
-            const c = +longPressTarget.getAttribute('data-c');
-            this.toggleFlag(r, c);
-            if (navigator.vibrate) navigator.vibrate(10);
-            longPressTarget = null;
-          }, LONG_PRESS_MS);
-        }
-      });
-      this.svgRoot.addEventListener('pointerup', (e) => {
-        const target = e.target.closest('g[data-r]');
-        if (!target) {
-          clearLongPress();
-          return;
-        }
-        if (e.button !== 0) return;
-        if (IS_MOBILE) {
-          if (longPressTarget === target) {
-            clearLongPress();
-            const r = +target.getAttribute('data-r');
-            const c = +target.getAttribute('data-c');
-            this.openCell(r, c);
-          }
-        } else {
-          const r = +target.getAttribute('data-r');
-          const c = +target.getAttribute('data-c');
-          this.openCell(r, c);
-        }
-      });
-      this.svgRoot.addEventListener('pointerleave', clearLongPress, true);
-      this.svgRoot.addEventListener('pointercancel', clearLongPress, true);
+      this.svgRoot.addEventListener('contextmenu', this.handleContextMenu.bind(this));
+      this.svgRoot.addEventListener('pointerdown', this.handlePointerDown.bind(this));
+      this.svgRoot.addEventListener('pointerup', this.handlePointerUp.bind(this));
+      this.svgRoot.addEventListener('pointerleave', this.clearLongPress.bind(this), true);
+      this.svgRoot.addEventListener('pointercancel', this.clearLongPress.bind(this), true);
       this.eventsBound = true;
     }
+  }
+
+  handleContextMenu(e) {
+    const target = e.target.closest('g[data-r]');
+    if (!target) return;
+    e.preventDefault();
+    const r = +target.getAttribute('data-r');
+    const c = +target.getAttribute('data-c');
+    this.toggleFlag(r, c);
+  }
+
+  handlePointerDown(e) {
+    const target = e.target.closest('g[data-r]');
+    if (!target || e.button !== 0) return;
+    if (IS_MOBILE) {
+      this.longPressTarget = target;
+      this.longPressTimer = setTimeout(() => {
+        if (!this.longPressTarget) return;
+        const r = +this.longPressTarget.getAttribute('data-r');
+        const c = +this.longPressTarget.getAttribute('data-c');
+        this.toggleFlag(r, c);
+        if (navigator.vibrate) navigator.vibrate(10);
+        this.longPressTarget = null;
+      }, LONG_PRESS_MS);
+    }
+  }
+
+  handlePointerUp(e) {
+    const target = e.target.closest('g[data-r]');
+    if (!target) {
+      this.clearLongPress();
+      return;
+    }
+    if (e.button !== 0) return;
+    const r = +target.getAttribute('data-r');
+    const c = +target.getAttribute('data-c');
+    if (IS_MOBILE && this.longPressTarget === target) {
+      this.clearLongPress();
+      this.openCell(r, c);
+    } else {
+      this.openCell(r, c);
+    }
+  }
+
+  clearLongPress() {
+    if (this.longPressTimer) {
+      clearTimeout(this.longPressTimer);
+      this.longPressTimer = null;
+    }
+    this.longPressTarget = null;
   }
 
   renderCell(group, cell) {
@@ -708,9 +710,11 @@ class Minesweeper404 {
     return count;
   }
 
+  // Batch HUD updates
   updateHud() {
-    this.hudElements.mines.textContent = `Mines: ${this.state.mines}`;
-    this.hudElements.flags.textContent = `Flags: ${this.state.flags}`;
+    const { mines, flags } = this.state;
+    this.hudElements.mines.textContent = `Mines: ${mines}`;
+    this.hudElements.flags.textContent = `Flags: ${flags}`;
   }
 
   startTimer() {
