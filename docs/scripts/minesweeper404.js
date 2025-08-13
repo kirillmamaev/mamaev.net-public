@@ -2,64 +2,8 @@
  * Minesweeper 404 Game by Kirill Mamaev - kirill@mamaev.net
  */
 
-// SVG SYMBOL SPRITE
-const SVG_SYMBOL_SPRITE = `
-<svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden">
-  <defs>
-    <linearGradient id="g-bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#222"/>
-      <stop offset="100%" stop-color="#111"/>
-    </linearGradient>
-  </defs>
-  <symbol id="tile-closed" viewBox="0 0 32 32">
-    <rect width="32" height="32" rx="4" ry="4" fill="#2e2e2e" stroke="#555" stroke-width="2"/>
-  </symbol>
-  <symbol id="tile-open" viewBox="0 0 32 32">
-    <rect width="32" height="32" rx="4" ry="4" fill="#1a1a1a" stroke="#444" stroke-width="1"/>
-  </symbol>
-  <symbol id="tile-404" viewBox="0 0 32 32">
-    <rect width="32" height="32" rx="4" ry="4" fill="#333" stroke="#666" stroke-width="1"/>
-  </symbol>
-  <symbol id="tile-blast" viewBox="0 0 32 32">
-    <rect width="32" height="32" rx="4" ry="4" fill="#4a0000" stroke="#aa0000" stroke-width="2"/>
-  </symbol>
-  <symbol id="flag" viewBox="0 0 32 32">
-    <rect width="32" height="32" rx="4" ry="4" fill="#2e2e2e" stroke="#555" stroke-width="2"/>
-    <path d="M12 26V6l10 4-10 4" fill="#ff3b30"/>
-    <rect x="11" y="6" width="2" height="20" fill="#c0c0c0"/>
-  </symbol>
-  <symbol id="mine" viewBox="0 0 32 32">
-    <rect width="32" height="32" rx="4" ry="4" fill="#1a1a1a" stroke="#333" stroke-width="1"/>
-    <g fill="#000" stroke="#555" stroke-width="2" stroke-linecap="round">
-      <circle cx="16" cy="16" r="8" fill="#000"/>
-      <line x1="16" y1="4" x2="16" y2="10"/>
-      <line x1="16" y1="22" x2="16" y2="28"/>
-      <line x1="4" y1="16" x2="10" y2="16"/>
-      <line x1="22" y1="16" x2="28" y2="16"/>
-      <line x1="7" y1="7" x2="11" y2="11"/>
-      <line x1="21" y1="21" x2="25" y2="25"/>
-      <line x1="21" y1="7" x2="25" y2="11"/>
-      <line x1="7" y1="21" x2="11" y2="25"/>
-      <circle cx="16" cy="16" r="4" fill="#444" stroke="#888" stroke-width="1"/>
-    </g>
-  </symbol>
-  <symbol id="logo-404" viewBox="0 0 160 40">
-    <rect width="160" height="40" fill="none"/>
-    <text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" font-size="28" font-family="Arial" fill="#fff">404 Minesweeper</text>
-  </symbol>
-</svg>`;
-
-// Number rendering; colors map:
-const NUMBER_COLORS = {
-  1: '#4fc3f7',
-  2: '#81c784',
-  3: '#ffb74d',
-  4: '#ba68c8',
-  5: '#ef5350',
-  6: '#26c6da',
-  7: '#ffffff',
-  8: '#bdbdbd',
-};
+// Numbers rendering colors map
+const NUMBER_COLORS = ['', '#4fc3f7', '#81c784', '#ffb74d', '#9d60deff', '#ef5350', '#26c6da', '#ffffff', '#f472e7ff'];
 
 // Game configuration
 const CONFIG = {
@@ -67,12 +11,29 @@ const CONFIG = {
   ROWS: 15,
   COLS: 25,
   MINES: 25,
-  PADDING: 0,
   MARGIN: 60,
 };
 
-// Mobile / input tweaks
-const LONG_PRESS_MS = 450; // long press to flag on touch
+// Direction vectors for adjacent cells
+const DIRECTIONS = [
+  [-1, -1],
+  [-1, 0],
+  [-1, 1],
+  [0, -1],
+  [0, 1],
+  [1, -1],
+  [1, 0],
+  [1, 1],
+];
+
+// 404 Pattern digits
+const PATTERN_DIGITS = {
+  4: ['X.X', 'X.X', 'XXX', '..X', '..X'],
+  0: ['XXX', 'X.X', 'X.X', 'X.X', 'XXX'],
+};
+
+// Mobile / input configuration
+const LONG_PRESS_MS = 450;
 const IS_MOBILE = 'ontouchstart' in window || (navigator.maxTouchPoints || 0) > 1;
 
 // Initialise on load
@@ -91,14 +52,7 @@ class Minesweeper404 {
   constructor() {
     this.resetPageStyles();
     this.eventsBound = false;
-
-    // Inject SVG sprite once
-    if (!document.getElementById('ms404-sprite')) {
-      const div = document.createElement('div');
-      div.id = 'ms404-sprite';
-      div.innerHTML = SVG_SYMBOL_SPRITE;
-      document.body.appendChild(div);
-    }
+    this.hudElements = {}; // Cache HUD elements
 
     this.state = this.createEmptyState();
     this.generatePermanent404Pattern();
@@ -163,19 +117,15 @@ class Minesweeper404 {
 
   generatePermanent404Pattern() {
     const { ROWS, COLS } = CONFIG;
-    // Pattern digits 4 0 4 in 3x5 each with 1 column spacing
-    const DIGITS = {
-      4: ['X.X', 'X.X', 'XXX', '..X', '..X'],
-      0: ['XXX', 'X.X', 'X.X', 'X.X', 'XXX'],
-    };
     const sequence = ['4', '0', '4'];
-    const patternWidth = sequence.length * 3 + (sequence.length - 1) * 1;
+    const patternWidth = sequence.length * 3 + (sequence.length - 1);
     const patternHeight = 5;
     const startRow = Math.floor((ROWS - patternHeight) / 2);
     const startCol = Math.floor((COLS - patternWidth) / 2);
+
     let colCursor = startCol;
     sequence.forEach((digit, idx) => {
-      const rows = DIGITS[digit];
+      const rows = PATTERN_DIGITS[digit];
       rows.forEach((rowPattern, dr) => {
         [...rowPattern].forEach((ch, dc) => {
           if (ch === 'X') {
@@ -187,7 +137,7 @@ class Minesweeper404 {
         });
       });
       colCursor += 3;
-      if (idx < sequence.length - 1) colCursor += 1;
+      if (idx < sequence.length - 1) colCursor++;
     });
   }
 
@@ -207,26 +157,17 @@ class Minesweeper404 {
 
   calculateNumbers() {
     const { ROWS, COLS } = CONFIG;
-    const dirs = [
-      [-1, -1],
-      [-1, 0],
-      [-1, 1],
-      [0, -1],
-      [0, 1],
-      [1, -1],
-      [1, 0],
-      [1, 1],
-    ];
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
         const cell = this.state.grid[r][c];
         if (cell.mine) continue;
+
         let count = 0;
-        for (const [dr, dc] of dirs) {
+        for (const [dr, dc] of DIRECTIONS) {
           const nr = r + dr,
             nc = c + dc;
-          if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
-            if (this.state.grid[nr][nc].mine) count++;
+          if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && this.state.grid[nr][nc].mine) {
+            count++;
           }
         }
         cell.num = count;
@@ -327,7 +268,15 @@ class Minesweeper404 {
       <button id="ms404-reset" style="background:#333;border:1px solid #555;color:#fff;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:13px">Restart</button>
     `;
     this.container.appendChild(this.hud);
-    this.hud.querySelector('#ms404-reset').addEventListener('click', () => this.resetGame());
+
+    // Cache HUD elements
+    this.hudElements = {
+      mines: this.hud.querySelector('#ms404-mines'),
+      flags: this.hud.querySelector('#ms404-flags'),
+      timer: this.hud.querySelector('#ms404-timer'),
+      reset: this.hud.querySelector('#ms404-reset'),
+    };
+    this.hudElements.reset.addEventListener('click', () => this.resetGame());
 
     // Create board svg
     this.svgRoot = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -524,47 +473,38 @@ class Minesweeper404 {
     }
   }
 
-  drawClosedTile(group, size) {
+  // Optimized rect creation with common attributes
+  createRect(x, y, width, height, rx, ry, fill, stroke, strokeWidth) {
     const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    rect.setAttribute('x', 0);
-    rect.setAttribute('y', 0);
-    rect.setAttribute('width', size);
-    rect.setAttribute('height', size);
-    rect.setAttribute('rx', Math.max(2, size * 0.125));
-    rect.setAttribute('ry', Math.max(2, size * 0.125));
-    rect.setAttribute('fill', '#2e2e2e');
-    rect.setAttribute('stroke', '#555');
-    rect.setAttribute('stroke-width', Math.max(1, size * 0.0625));
+    rect.setAttribute('x', x);
+    rect.setAttribute('y', y);
+    rect.setAttribute('width', width);
+    rect.setAttribute('height', height);
+    rect.setAttribute('rx', rx);
+    rect.setAttribute('ry', ry);
+    rect.setAttribute('fill', fill);
+    rect.setAttribute('stroke', stroke);
+    rect.setAttribute('stroke-width', strokeWidth);
+    return rect;
+  }
+
+  drawClosedTile(group, size) {
+    const rx = Math.max(2, size * 0.125);
+    const rect = this.createRect(0, 0, size, size, rx, rx, '#2e2e2e', '#555', Math.max(1, size * 0.0625));
     rect.classList.add('cell-anim-open');
     group.appendChild(rect);
   }
 
   drawOpenTile(group, size) {
-    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    rect.setAttribute('x', 0);
-    rect.setAttribute('y', 0);
-    rect.setAttribute('width', size);
-    rect.setAttribute('height', size);
-    rect.setAttribute('rx', Math.max(2, size * 0.125));
-    rect.setAttribute('ry', Math.max(2, size * 0.125));
-    rect.setAttribute('fill', '#1a1a1a');
-    rect.setAttribute('stroke', '#444');
-    rect.setAttribute('stroke-width', Math.max(1, size * 0.03125));
+    const rx = Math.max(2, size * 0.125);
+    const rect = this.createRect(0, 0, size, size, rx, rx, '#1a1a1a', '#444', Math.max(1, size * 0.03125));
     rect.classList.add('cell-anim-open');
     group.appendChild(rect);
   }
 
   drawBlastTile(group, size) {
-    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    rect.setAttribute('x', 0);
-    rect.setAttribute('y', 0);
-    rect.setAttribute('width', size);
-    rect.setAttribute('height', size);
-    rect.setAttribute('rx', Math.max(2, size * 0.125));
-    rect.setAttribute('ry', Math.max(2, size * 0.125));
-    rect.setAttribute('fill', '#4a0000');
-    rect.setAttribute('stroke', '#aa0000');
-    rect.setAttribute('stroke-width', Math.max(1, size * 0.0625));
+    const rx = Math.max(2, size * 0.125);
+    const rect = this.createRect(0, 0, size, size, rx, rx, '#4a0000', '#aa0000', Math.max(1, size * 0.0625));
     rect.classList.add('cell-anim-explode');
     group.appendChild(rect);
   }
@@ -574,62 +514,69 @@ class Minesweeper404 {
     this.drawClosedTile(group, size);
 
     // Flag pole
-    const pole = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    const poleX = size * 0.34375; // 11/32
-    const poleY = size * 0.1875; // 6/32
-    const poleW = size * 0.0625; // 2/32
-    const poleH = size * 0.625; // 20/32
-    pole.setAttribute('x', poleX);
-    pole.setAttribute('y', poleY);
-    pole.setAttribute('width', poleW);
-    pole.setAttribute('height', poleH);
-    pole.setAttribute('fill', '#c0c0c0');
+    const pole = this.createRect(
+      size * 0.34375,
+      size * 0.1875,
+      size * 0.0625,
+      size * 0.625,
+      0,
+      0,
+      '#c0c0c0',
+      'none',
+      0
+    );
     pole.classList.add('cell-anim-flag');
     group.appendChild(pole);
 
     // Flag
     const flag = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    const flagPath = `M${size * 0.375} ${size * 0.8125}V${size * 0.1875}l${size * 0.3125} ${size * 0.125}-${
-      size * 0.3125
-    } ${size * 0.125}`;
-    flag.setAttribute('d', flagPath);
+    flag.setAttribute(
+      'd',
+      `M${size * 0.375} ${size * 0.8125}V${size * 0.1875}l${size * 0.3125} ${size * 0.125}-${size * 0.3125} ${
+        size * 0.125
+      }`
+    );
     flag.setAttribute('fill', '#ff3b30');
     flag.classList.add('cell-anim-flag');
     group.appendChild(flag);
   }
 
   drawMine(group, size) {
+    const center = size / 2;
+    const radius = size * 0.25;
+    const strokeWidth = Math.max(1, size * 0.0625);
+
     // Mine body
     const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    circle.setAttribute('cx', size / 2);
-    circle.setAttribute('cy', size / 2);
-    circle.setAttribute('r', size * 0.25); // 8/32
+    circle.setAttribute('cx', center);
+    circle.setAttribute('cy', center);
+    circle.setAttribute('r', radius);
     circle.setAttribute('fill', '#000');
     circle.setAttribute('stroke', '#555');
-    circle.setAttribute('stroke-width', Math.max(1, size * 0.0625));
+    circle.setAttribute('stroke-width', strokeWidth);
     circle.classList.add('cell-anim-explode');
     group.appendChild(circle);
 
-    // Mine spikes
-    const spikes = [
-      [0.5, 0.125, 0.5, 0.3125], // top
-      [0.5, 0.6875, 0.5, 0.875], // bottom
-      [0.125, 0.5, 0.3125, 0.5], // left
-      [0.6875, 0.5, 0.875, 0.5], // right
-      [0.21875, 0.21875, 0.34375, 0.34375], // top-left
-      [0.65625, 0.65625, 0.78125, 0.78125], // bottom-right
-      [0.65625, 0.21875, 0.78125, 0.34375], // top-right
-      [0.21875, 0.65625, 0.34375, 0.78125], // bottom-left
+    // Mine spikes - optimized coordinates
+    const spikeCoords = [
+      [0.5, 0.125, 0.5, 0.3125],
+      [0.5, 0.6875, 0.5, 0.875],
+      [0.125, 0.5, 0.3125, 0.5],
+      [0.6875, 0.5, 0.875, 0.5],
+      [0.21875, 0.21875, 0.34375, 0.34375],
+      [0.65625, 0.65625, 0.78125, 0.78125],
+      [0.65625, 0.21875, 0.78125, 0.34375],
+      [0.21875, 0.65625, 0.34375, 0.78125],
     ];
 
-    spikes.forEach(([x1, y1, x2, y2]) => {
+    spikeCoords.forEach(([x1, y1, x2, y2]) => {
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       line.setAttribute('x1', size * x1);
       line.setAttribute('y1', size * y1);
       line.setAttribute('x2', size * x2);
       line.setAttribute('y2', size * y2);
       line.setAttribute('stroke', '#555');
-      line.setAttribute('stroke-width', Math.max(1, size * 0.0625));
+      line.setAttribute('stroke-width', strokeWidth);
       line.setAttribute('stroke-linecap', 'round');
       line.classList.add('cell-anim-explode');
       group.appendChild(line);
@@ -637,9 +584,9 @@ class Minesweeper404 {
 
     // Inner highlight
     const inner = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    inner.setAttribute('cx', size / 2);
-    inner.setAttribute('cy', size / 2);
-    inner.setAttribute('r', size * 0.125); // 4/32
+    inner.setAttribute('cx', center);
+    inner.setAttribute('cy', center);
+    inner.setAttribute('r', size * 0.125);
     inner.setAttribute('fill', '#444');
     inner.setAttribute('stroke', '#888');
     inner.setAttribute('stroke-width', '1');
@@ -650,9 +597,9 @@ class Minesweeper404 {
   drawNumber(group, num, size) {
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     text.setAttribute('x', size / 2);
-    text.setAttribute('y', size * 0.625); // 20/32
+    text.setAttribute('y', size * 0.625);
     text.setAttribute('text-anchor', 'middle');
-    text.setAttribute('font-size', Math.round(size * 0.5625)); // 18/32
+    text.setAttribute('font-size', Math.round(size * 0.5625));
     text.setAttribute('font-weight', '600');
     text.setAttribute('fill', NUMBER_COLORS[num] || '#fff');
     text.textContent = num;
@@ -694,28 +641,29 @@ class Minesweeper404 {
     const queue = [[r, c]];
     const seen = new Set();
     let wave = 0;
+
     while (queue.length) {
       const [cr, cc] = queue.shift();
-      const key = cr + ',' + cc;
+      const key = `${cr},${cc}`;
       if (seen.has(key)) continue;
       seen.add(key);
+
       const cell = this.state.grid[cr][cc];
       if (cell.num > 0) continue;
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-          if (dr === 0 && dc === 0) continue;
-          const nr = cr + dr;
-          const nc = cc + dc;
-          if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
-          const ncell = this.state.grid[nr][nc];
-          if (!ncell.open && !ncell.flag && !ncell.permanent && !ncell.mine) {
-            ncell.open = true;
-            this.state.openCount++;
-            const g = this.findCellGroup(nr, nc);
-            const delay = wave * 12;
-            setTimeout(() => this.renderCell(g, ncell), delay);
-            if (ncell.num === 0) queue.push([nr, nc]);
-          }
+
+      for (const [dr, dc] of DIRECTIONS) {
+        const nr = cr + dr,
+          nc = cc + dc;
+        if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
+
+        const ncell = this.state.grid[nr][nc];
+        if (!ncell.open && !ncell.flag && !ncell.permanent && !ncell.mine) {
+          ncell.open = true;
+          this.state.openCount++;
+          const g = this.findCellGroup(nr, nc);
+          const delay = wave * 12;
+          setTimeout(() => this.renderCell(g, ncell), delay);
+          if (ncell.num === 0) queue.push([nr, nc]);
         }
       }
       wave++;
@@ -741,7 +689,7 @@ class Minesweeper404 {
   checkWin() {
     if (this.state.exploded || this.state.won) return;
     const { ROWS, COLS } = CONFIG;
-    let totalNonPermanent = ROWS * COLS - this.countPermanent();
+    const totalNonPermanent = ROWS * COLS - this.countPermanent();
     if (this.state.openCount === totalNonPermanent - this.state.mines) {
       this.state.won = true;
       this.stopTimer();
@@ -752,23 +700,24 @@ class Minesweeper404 {
   countPermanent() {
     const { ROWS, COLS } = CONFIG;
     let count = 0;
-    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (this.state.grid[r][c].permanent) count++;
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (this.state.grid[r][c].permanent) count++;
+      }
+    }
     return count;
   }
 
   updateHud() {
-    const minesEl = document.getElementById('ms404-mines');
-    const flagsEl = document.getElementById('ms404-flags');
-    if (minesEl) minesEl.textContent = `Mines: ${this.state.mines}`;
-    if (flagsEl) flagsEl.textContent = `Flags: ${this.state.flags}`;
+    this.hudElements.mines.textContent = `Mines: ${this.state.mines}`;
+    this.hudElements.flags.textContent = `Flags: ${this.state.flags}`;
   }
 
   startTimer() {
     this.timerInterval = setInterval(() => {
       if (this.state.exploded || this.state.won) return;
       const t = ((performance.now() - this.state.startTime) / 1000).toFixed(1);
-      const el = document.getElementById('ms404-timer');
-      if (el) el.textContent = `${t}s`;
+      this.hudElements.timer.textContent = `${t}s`;
     }, 100);
   }
 
