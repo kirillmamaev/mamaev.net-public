@@ -16,6 +16,7 @@ const DIRECTIONS = [
   [-1, 0],
   [-1, 1],
   [0, -1],
+  // Intentionally skip [0, 0] to avoid self-reference.
   [0, 1],
   [1, -1],
   [1, 0],
@@ -29,7 +30,7 @@ const PATTERN_DIGITS = {
 };
 
 // Mobile / input configuration
-const LONG_PRESS_MS = 450;
+const LONG_PRESS_MS = 500;
 const IS_MOBILE = 'ontouchstart' in window || (navigator.maxTouchPoints || 0) > 1;
 
 // Game configuration
@@ -60,6 +61,7 @@ class Minesweeper404 {
     this.hudElements = {};
     this.longPressTarget = null;
     this.longPressTimer = null;
+    this.longPressExecuted = false;
 
     // Bind event handlers once to maintain references for removal
     this.boundHandleContextMenu = this.handleContextMenu.bind(this);
@@ -369,6 +371,10 @@ class Minesweeper404 {
     const target = e.target.closest('g[data-r]');
     if (!target) return;
     e.preventDefault();
+    // On mobile, don't handle context menu if we're handling long press
+    if (IS_MOBILE && (this.longPressTimer || this.longPressExecuted)) {
+      return;
+    }
     const r = +target.getAttribute('data-r');
     const c = +target.getAttribute('data-c');
     this.toggleFlag(r, c);
@@ -377,17 +383,22 @@ class Minesweeper404 {
   handlePointerDown(e) {
     const target = e.target.closest('g[data-r]');
     if (!target || e.button !== 0) return;
-
     if (IS_MOBILE) {
       e.preventDefault();
+      // If we already have a long press in progress for this target, don't start another
+      if (this.longPressTarget === target && this.longPressTimer) {
+        return;
+      }
+      // Clear any existing long press state before starting new one
+      this.clearLongPress();
       this.longPressTarget = target;
+      this.longPressExecuted = false;
       this.longPressTimer = setTimeout(() => {
         if (!this.longPressTarget) return;
         const r = +this.longPressTarget.getAttribute('data-r');
         const c = +this.longPressTarget.getAttribute('data-c');
         this.toggleFlag(r, c);
-        if (navigator.vibrate) navigator.vibrate(50);
-        this.longPressTarget = null;
+        this.longPressExecuted = true;
       }, LONG_PRESS_MS);
     }
   }
@@ -399,18 +410,18 @@ class Minesweeper404 {
       return;
     }
     if (e.button !== 0) return;
-
     const r = +target.getAttribute('data-r');
     const c = +target.getAttribute('data-c');
-
     if (IS_MOBILE) {
-      if (this.longPressTarget === target && this.longPressTimer) {
-        // Short tap - open cell
-        this.clearLongPress();
-        this.openCell(r, c);
+      if (this.longPressTarget === target) {
+        if (this.longPressExecuted) {
+          this.clearLongPress();
+        } else if (this.longPressTimer) {
+          this.clearLongPress();
+          this.openCell(r, c);
+        }
       }
     } else {
-      // Desktop - simple click to open
       this.openCell(r, c);
     }
   }
@@ -421,6 +432,7 @@ class Minesweeper404 {
       this.longPressTimer = null;
     }
     this.longPressTarget = null;
+    this.longPressExecuted = false;
   }
 
   renderCell(group, cell) {
@@ -546,7 +558,7 @@ class Minesweeper404 {
       0,
       '#c0c0c0',
       'none',
-      0
+      0,
     );
     pole.classList.add('cell-anim-flag');
     group.appendChild(pole);
@@ -557,7 +569,7 @@ class Minesweeper404 {
       'd',
       `M${size * 0.375} ${size * 0.8125}V${size * 0.1875}l${size * 0.3125} ${size * 0.125}-${size * 0.3125} ${
         size * 0.125
-      }`
+      }`,
     );
     flag.setAttribute('fill', '#ff3b30');
     flag.classList.add('cell-anim-flag');
@@ -635,7 +647,7 @@ class Minesweeper404 {
     const cell = this.state.grid[r][c];
     if (cell.open || cell.permanent) return;
     cell.flag = !cell.flag;
-    this.state.flags += cell.flag ? 1 : -1;
+    this.state.flags = cell.flag ? 1 : 0;
     this.updateHud();
     this.renderCell(this.findCellGroup(r, c), cell);
     this.checkWin();
