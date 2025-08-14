@@ -661,7 +661,7 @@ class Minesweeper404 {
     const cell = this.state.grid[r][c];
     if (cell.open || cell.permanent) return;
     cell.flag = !cell.flag;
-    this.state.flags = cell.flag ? 1 : 0;
+    this.state.flags += cell.flag ? 1 : -1;
     this.updateHud();
     this.#renderCell(this.findCellGroup(r, c), cell);
     this.checkWin();
