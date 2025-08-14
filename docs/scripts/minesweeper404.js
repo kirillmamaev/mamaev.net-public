@@ -7,56 +7,70 @@
  * License: MIT
  */
 
-// Numbers rendering colors map
-const NUMBER_COLORS = ['', '#4fc3f7', '#81c784', '#ffb74d', '#9d60deff', '#ef5350', '#26c6da', '#ffffff', '#f472e7ff'];
-
-// Direction vectors for adjacent cells
-const DIRECTIONS = [
-  [-1, -1],
-  [-1, 0],
-  [-1, 1],
-  [0, -1],
-  // Intentionally skip [0, 0] to avoid self-reference.
-  [0, 1],
-  [1, -1],
-  [1, 0],
-  [1, 1],
-];
-
-// 404 Pattern digits
-const PATTERN_DIGITS = {
-  4: ['X.X', 'X.X', 'XXX', '..X', '..X'],
-  0: ['XXX', 'X.X', 'X.X', 'X.X', 'XXX'],
-};
-
-// Mobile / input configuration
-const LONG_PRESS_MS = 500;
-const IS_MOBILE = 'ontouchstart' in window || (navigator.maxTouchPoints || 0) > 1;
-
-// Game configuration
-const CONFIG = {
-  TILE: 32,
-  ROWS: IS_MOBILE ? 9 : 15,
-  COLS: IS_MOBILE ? 15 : 25,
-  MINES: IS_MOBILE ? 10 : 25,
-  MARGIN: IS_MOBILE ? 20 : 60,
-};
-
-// Initialise on load
-if (document.readyState === 'complete') {
-  initialise();
-} else {
-  window.addEventListener('load', initialise);
-}
-
-function initialise() {
-  new Minesweeper404();
-}
-
-// Game Class
 class Minesweeper404 {
+  // Text constants
+  #TEXT = {
+    EN: {
+      BUTTON: {
+        PLAY_AGAIN: 'Play Again',
+        RESTART: 'Restart',
+      },
+      MESSAGE: {
+        CONGRATULATIONS: 'Congratulations! 🎉<br><br>The page is not found,<br>but the winner is! 😉',
+        GAME_OVER: 'Game Over! 💥<br><br>The page is not found,<br>but the mine is! 😉',
+      },
+      HUD_ELEMENT: {
+        MINES: 'Mines',
+        FLAGS: 'Flags',
+        TIME: 'Time',
+        SECONDS: 's',
+      },
+    },
+  };
+
+  // Numbers rendering colors map
+  #NUMBER_COLORS = ['', '#4fc3f7', '#81c784', '#ffb74d', '#9d60deff', '#ef5350', '#26c6da', '#ffffff', '#f472e7ff'];
+
+  // Direction vectors for adjacent cells
+  #DIRECTIONS = [
+    [-1, -1],
+    [-1, 0],
+    [-1, 1],
+    [0, -1],
+    // Intentionally skip [0, 0] to avoid self-reference.
+    [0, 1],
+    [1, -1],
+    [1, 0],
+    [1, 1],
+  ];
+
+  // 404 Pattern digits
+  #PATTERN_DIGITS = {
+    4: ['X.X', 'X.X', 'XXX', '..X', '..X'],
+    0: ['XXX', 'X.X', 'X.X', 'X.X', 'XXX'],
+  };
+
+  // Mobile / input configuration
+  #LONG_PRESS_MS = 500;
+
+  #IS_MOBILE = 'ontouchstart' in window || (navigator.maxTouchPoints || 0) > 1;
+
+  // Game main configuration
+  #CONFIG = {
+    TILE: 32,
+    ROWS: this.#IS_MOBILE ? 9 : 15,
+    COLS: this.#IS_MOBILE ? 15 : 25,
+    MINES: this.#IS_MOBILE ? 10 : 25,
+    MARGIN: this.#IS_MOBILE ? 20 : 60,
+  };
+
+  // Initialise on load
+  static initialise() {
+    new Minesweeper404();
+  }
+
   constructor() {
-    this.resetPageStyles();
+    this.#resetPageStyles();
     this.eventsBound = false;
     this.hudElements = {};
     this.longPressTarget = null;
@@ -64,21 +78,21 @@ class Minesweeper404 {
     this.longPressExecuted = false;
 
     // Bind event handlers once to maintain references for removal
-    this.boundHandleContextMenu = this.handleContextMenu.bind(this);
-    this.boundHandlePointerDown = this.handlePointerDown.bind(this);
-    this.boundHandlePointerUp = this.handlePointerUp.bind(this);
-    this.boundClearLongPress = this.clearLongPress.bind(this);
+    this.boundHandleContextMenu = this.#handleContextMenu.bind(this);
+    this.boundHandlePointerDown = this.#handlePointerDown.bind(this);
+    this.boundHandlePointerUp = this.#handlePointerUp.bind(this);
+    this.boundClearLongPress = this.#clearLongPress.bind(this);
 
-    this.state = this.createEmptyState();
-    this.generatePermanent404Pattern();
-    this.placeMines();
-    this.calculateNumbers();
-    this.injectStyles();
-    this.render();
-    this.attachResizeHandler();
+    this.state = this.#createEmptyState();
+    this.#generatePermanent404Pattern();
+    this.#placeMines();
+    this.#calculateNumbers();
+    this.#injectStyles();
+    this.#render();
+    this.#attachResizeHandler();
   }
 
-  injectStyles() {
+  #injectStyles() {
     if (document.getElementById('ms404-anim-styles')) return;
     const style = document.createElement('style');
     style.id = 'ms404-anim-styles';
@@ -101,8 +115,8 @@ class Minesweeper404 {
   }
 
   // State helpers
-  createEmptyState() {
-    const { ROWS, COLS } = CONFIG;
+  #createEmptyState() {
+    const { ROWS, COLS } = this.#CONFIG;
     const grid = [];
     for (let r = 0; r < ROWS; r++) {
       const row = [];
@@ -131,8 +145,8 @@ class Minesweeper404 {
     };
   }
 
-  generatePermanent404Pattern() {
-    const { ROWS, COLS } = CONFIG;
+  #generatePermanent404Pattern() {
+    const { ROWS, COLS } = this.#CONFIG;
     const sequence = ['4', '0', '4'];
     const patternWidth = sequence.length * 3 + (sequence.length - 1);
     const patternHeight = 5;
@@ -141,7 +155,7 @@ class Minesweeper404 {
 
     let colCursor = startCol;
     sequence.forEach((digit, idx) => {
-      const rows = PATTERN_DIGITS[digit];
+      const rows = this.#PATTERN_DIGITS[digit];
       rows.forEach((rowPattern, dr) => {
         [...rowPattern].forEach((ch, dc) => {
           if (ch === 'X') {
@@ -158,8 +172,8 @@ class Minesweeper404 {
     });
   }
 
-  placeMines() {
-    const { ROWS, COLS, MINES } = CONFIG;
+  #placeMines() {
+    const { ROWS, COLS, MINES } = this.#CONFIG;
     let toPlace = MINES;
     while (toPlace > 0) {
       const r = Math.floor(Math.random() * ROWS);
@@ -172,15 +186,15 @@ class Minesweeper404 {
     }
   }
 
-  calculateNumbers() {
-    const { ROWS, COLS } = CONFIG;
+  #calculateNumbers() {
+    const { ROWS, COLS } = this.#CONFIG;
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
         const cell = this.state.grid[r][c];
         if (cell.mine) continue;
 
         let count = 0;
-        for (const [dr, dc] of DIRECTIONS) {
+        for (const [dr, dc] of this.#DIRECTIONS) {
           const nr = r + dr,
             nc = c + dc;
           if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && this.state.grid[nr][nc].mine) {
@@ -192,32 +206,32 @@ class Minesweeper404 {
     }
   }
 
-  attachResizeHandler() {
-    window.addEventListener('resize', () => this.handleResize());
-    this.handleResize();
+  #attachResizeHandler() {
+    window.addEventListener('resize', () => this.#handleResize());
+    this.#handleResize();
   }
 
-  handleResize() {
-    this.computeTileSize();
-    this.positionBoard();
-    this.redrawBoard();
+  #handleResize() {
+    this.#computeTileSize();
+    this.#positionBoard();
+    this.#redrawBoard();
   }
 
-  computeTileSize() {
+  #computeTileSize() {
     const hudH = this.hud ? this.hud.offsetHeight + 12 : 0;
-    const margin = CONFIG.MARGIN;
+    const margin = this.#CONFIG.MARGIN;
     const availH = window.innerHeight - hudH - margin * 2;
     const availW = window.innerWidth - margin * 2;
-    const tile = Math.floor(Math.min(availW / CONFIG.COLS, availH / CONFIG.ROWS));
-    CONFIG.TILE = Math.max(18, tile);
+    const tile = Math.floor(Math.min(availW / this.#CONFIG.COLS, availH / this.#CONFIG.ROWS));
+    this.#CONFIG.TILE = Math.max(18, tile);
   }
 
-  positionBoard() {
+  #positionBoard() {
     if (!this.svgRoot) return;
     const hudH = this.hud ? this.hud.offsetHeight + 12 : 0;
-    const margin = CONFIG.MARGIN;
-    const boardW = CONFIG.COLS * CONFIG.TILE;
-    const boardH = CONFIG.ROWS * CONFIG.TILE;
+    const margin = this.#CONFIG.MARGIN;
+    const boardW = this.#CONFIG.COLS * this.#CONFIG.TILE;
+    const boardH = this.#CONFIG.ROWS * this.#CONFIG.TILE;
     const left = Math.max(margin, (window.innerWidth - boardW) / 2);
     const topExtraSpace = window.innerHeight - hudH - boardH - margin * 2;
     const top = hudH + margin + Math.max(0, topExtraSpace / 2);
@@ -228,13 +242,12 @@ class Minesweeper404 {
     this.svgRoot.style.top = `${top}px`;
   }
 
-  redrawBoard() {
+  #redrawBoard() {
     if (!this.boardGroup) return;
-    // Rebuild tile transforms to new size
-    this.drawTiles();
+    this.#drawTiles();
   }
 
-  resetPageStyles() {
+  #resetPageStyles() {
     Object.assign(document.body.style, {
       margin: 0,
       padding: 0,
@@ -246,7 +259,7 @@ class Minesweeper404 {
     });
   }
 
-  render() {
+  #render() {
     this.container = document.createElement('div');
     this.container.id = 'ms404-container';
     Object.assign(this.container.style, {
@@ -257,7 +270,7 @@ class Minesweeper404 {
     });
     document.body.appendChild(this.container);
 
-    // HUD (fixed top center)
+    // Heads-Up Display (fixed top center)
     this.hud = document.createElement('div');
     Object.assign(this.hud.style, {
       position: 'fixed',
@@ -279,21 +292,23 @@ class Minesweeper404 {
       letterSpacing: '1px',
     });
     this.hud.innerHTML = `
-      <span id="ms404-mines">Mines: ${this.state.mines}</span>
-      <span id="ms404-flags">Flags: 0</span>
-      <span id="ms404-timer">Time: 0 s</span>
-      <button id="ms404-reset" style="background:#333;border:1px solid #555;color:#fff;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:13px">Restart</button>
+      <span id="ms404-mines">${this.#TEXT.EN.HUD_ELEMENT.MINES}: ${this.state.mines}</span>
+      <span id="ms404-flags">${this.#TEXT.EN.HUD_ELEMENT.FLAGS}: 0</span>
+      <span id="ms404-timer">${this.#TEXT.EN.HUD_ELEMENT.TIME}: 0 ${this.#TEXT.EN.HUD_ELEMENT.SECONDS}</span>
+      <button id="ms404-reset" style="background:#333;border:1px solid #555;color:#fff;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:13px">${
+        this.#TEXT.EN.BUTTON.RESTART
+      }</button>
     `;
     this.container.appendChild(this.hud);
 
-    // Cache HUD elements
+    // Cache Heads-Up Display elements
     this.hudElements = {
       mines: this.hud.querySelector('#ms404-mines'),
       flags: this.hud.querySelector('#ms404-flags'),
       timer: this.hud.querySelector('#ms404-timer'),
       reset: this.hud.querySelector('#ms404-reset'),
     };
-    this.hudElements.reset.addEventListener('click', () => this.resetGame());
+    this.hudElements.reset.addEventListener('click', () => this.#resetGame());
 
     // Create board svg
     this.svgRoot = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -310,14 +325,15 @@ class Minesweeper404 {
     this.boardGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     this.svgRoot.appendChild(this.boardGroup);
 
-    // Compute initial size + draw
-    this.handleResize();
-    this.startTimer();
+    // Compute initial size and draw
+    this.#handleResize();
+    this.#startTimer();
   }
 
-  drawTiles() {
+  #drawTiles() {
     while (this.boardGroup.firstChild) this.boardGroup.removeChild(this.boardGroup.firstChild);
-    const { ROWS, COLS, TILE } = CONFIG;
+    const { ROWS, COLS, TILE } = this.#CONFIG;
+    // Draw cells
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
         const cell = this.state.grid[r][c];
@@ -327,7 +343,7 @@ class Minesweeper404 {
         g.style.cursor = cell.open || this.state.exploded || this.state.won || cell.permanent ? 'default' : 'pointer';
         g.setAttribute('transform', `translate(${c * TILE},${r * TILE})`);
         this.boardGroup.appendChild(g);
-        this.renderCell(g, cell);
+        this.#renderCell(g, cell);
       }
     }
     // Grid lines overlay (draw after cells)
@@ -367,12 +383,12 @@ class Minesweeper404 {
     }
   }
 
-  handleContextMenu(e) {
+  #handleContextMenu(e) {
     const target = e.target.closest('g[data-r]');
     if (!target) return;
     e.preventDefault();
-    // On mobile, don't handle context menu if we're handling long press
-    if (IS_MOBILE && (this.longPressTimer || this.longPressExecuted)) {
+    // On mobile, don't handle context menu if long press is in progress
+    if (this.#IS_MOBILE && (this.longPressTimer || this.longPressExecuted)) {
       return;
     }
     const r = +target.getAttribute('data-r');
@@ -380,17 +396,16 @@ class Minesweeper404 {
     this.toggleFlag(r, c);
   }
 
-  handlePointerDown(e) {
+  #handlePointerDown(e) {
     const target = e.target.closest('g[data-r]');
     if (!target || e.button !== 0) return;
-    if (IS_MOBILE) {
+    if (this.#IS_MOBILE) {
       e.preventDefault();
-      // If we already have a long press in progress for this target, don't start another
+      // Don't start another target if long press is in progress
       if (this.longPressTarget === target && this.longPressTimer) {
         return;
       }
-      // Clear any existing long press state before starting new one
-      this.clearLongPress();
+      this.#clearLongPress();
       this.longPressTarget = target;
       this.longPressExecuted = false;
       this.longPressTimer = setTimeout(() => {
@@ -399,25 +414,25 @@ class Minesweeper404 {
         const c = +this.longPressTarget.getAttribute('data-c');
         this.toggleFlag(r, c);
         this.longPressExecuted = true;
-      }, LONG_PRESS_MS);
+      }, this.#LONG_PRESS_MS);
     }
   }
 
-  handlePointerUp(e) {
+  #handlePointerUp(e) {
     const target = e.target.closest('g[data-r]');
     if (!target) {
-      this.clearLongPress();
+      this.#clearLongPress();
       return;
     }
     if (e.button !== 0) return;
     const r = +target.getAttribute('data-r');
     const c = +target.getAttribute('data-c');
-    if (IS_MOBILE) {
+    if (this.#IS_MOBILE) {
       if (this.longPressTarget === target) {
         if (this.longPressExecuted) {
-          this.clearLongPress();
+          this.#clearLongPress();
         } else if (this.longPressTimer) {
-          this.clearLongPress();
+          this.#clearLongPress();
           this.openCell(r, c);
         }
       }
@@ -426,7 +441,7 @@ class Minesweeper404 {
     }
   }
 
-  clearLongPress() {
+  #clearLongPress() {
     if (this.longPressTimer) {
       clearTimeout(this.longPressTimer);
       this.longPressTimer = null;
@@ -435,9 +450,9 @@ class Minesweeper404 {
     this.longPressExecuted = false;
   }
 
-  renderCell(group, cell) {
+  #renderCell(group, cell) {
     while (group.firstChild) group.removeChild(group.firstChild);
-    const { TILE } = CONFIG;
+    const { TILE } = this.#CONFIG;
 
     if (cell.permanent) {
       // 404 tile - bright blue styling
@@ -484,32 +499,31 @@ class Minesweeper404 {
     }
 
     if (this.state.exploded && cell.mine) {
-      // Draw mine directly
-      this.drawMine(group, TILE);
+      this.#drawMine(group, TILE);
       return;
     }
 
     if (!cell.open) {
       if (cell.flag) {
-        this.drawFlag(group, TILE);
+        this.#drawFlag(group, TILE);
       } else {
-        this.drawClosedTile(group, TILE);
+        this.#drawClosedTile(group, TILE);
       }
     } else {
       if (cell.mine) {
-        this.drawBlastTile(group, TILE);
-        this.drawMine(group, TILE);
+        this.#drawBlastTile(group, TILE);
+        this.#drawMine(group, TILE);
       } else {
-        this.drawOpenTile(group, TILE);
+        this.#drawOpenTile(group, TILE);
         if (cell.num > 0) {
-          this.drawNumber(group, cell.num, TILE);
+          this.#drawNumber(group, cell.num, TILE);
         }
       }
     }
   }
 
-  // Rect creation with common attributes
-  createRect(x, y, width, height, rx, ry, fill, stroke, strokeWidth) {
+  // Rectangle creation with common attributes
+  #createRect(x, y, width, height, rx, ry, fill, stroke, strokeWidth) {
     const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     rect.setAttribute('x', x);
     rect.setAttribute('y', y);
@@ -523,33 +537,33 @@ class Minesweeper404 {
     return rect;
   }
 
-  drawClosedTile(group, size) {
+  #drawClosedTile(group, size) {
     const rx = Math.max(2, size * 0.125);
-    const rect = this.createRect(0, 0, size, size, rx, rx, '#2e2e2e', '#555', Math.max(1, size * 0.0625));
+    const rect = this.#createRect(0, 0, size, size, rx, rx, '#2e2e2e', '#555', Math.max(1, size * 0.0625));
     rect.classList.add('cell-anim-open');
     group.appendChild(rect);
   }
 
-  drawOpenTile(group, size) {
+  #drawOpenTile(group, size) {
     const rx = Math.max(2, size * 0.125);
-    const rect = this.createRect(0, 0, size, size, rx, rx, '#1a1a1a', '#444', Math.max(1, size * 0.03125));
+    const rect = this.#createRect(0, 0, size, size, rx, rx, '#1a1a1a', '#444', Math.max(1, size * 0.03125));
     rect.classList.add('cell-anim-open');
     group.appendChild(rect);
   }
 
-  drawBlastTile(group, size) {
+  #drawBlastTile(group, size) {
     const rx = Math.max(2, size * 0.125);
-    const rect = this.createRect(0, 0, size, size, rx, rx, '#4a0000', '#aa0000', Math.max(1, size * 0.0625));
+    const rect = this.#createRect(0, 0, size, size, rx, rx, '#4a0000', '#aa0000', Math.max(1, size * 0.0625));
     rect.classList.add('cell-anim-explode');
     group.appendChild(rect);
   }
 
-  drawFlag(group, size) {
+  #drawFlag(group, size) {
     // Base tile
-    this.drawClosedTile(group, size);
+    this.#drawClosedTile(group, size);
 
     // Flag pole
-    const pole = this.createRect(
+    const pole = this.#createRect(
       size * 0.34375,
       size * 0.1875,
       size * 0.0625,
@@ -576,7 +590,7 @@ class Minesweeper404 {
     group.appendChild(flag);
   }
 
-  drawMine(group, size) {
+  #drawMine(group, size) {
     const center = size / 2;
     const radius = size * 0.25;
     const strokeWidth = Math.max(1, size * 0.0625);
@@ -629,14 +643,14 @@ class Minesweeper404 {
     group.appendChild(inner);
   }
 
-  drawNumber(group, num, size) {
+  #drawNumber(group, num, size) {
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     text.setAttribute('x', size / 2);
     text.setAttribute('y', size * 0.685);
     text.setAttribute('text-anchor', 'middle');
     text.setAttribute('font-size', Math.round(size * 0.5625));
     text.setAttribute('font-weight', '600');
-    text.setAttribute('fill', NUMBER_COLORS[num] || '#fff');
+    text.setAttribute('fill', this.#NUMBER_COLORS[num] || '#fff');
     text.textContent = num;
     text.classList.add('cell-anim-open');
     group.appendChild(text);
@@ -649,7 +663,7 @@ class Minesweeper404 {
     cell.flag = !cell.flag;
     this.state.flags = cell.flag ? 1 : 0;
     this.updateHud();
-    this.renderCell(this.findCellGroup(r, c), cell);
+    this.#renderCell(this.findCellGroup(r, c), cell);
     this.checkWin();
   }
 
@@ -666,13 +680,13 @@ class Minesweeper404 {
       this.showEndMessage(false);
       return;
     }
-    this.renderCell(this.findCellGroup(r, c), cell);
+    this.#renderCell(this.findCellGroup(r, c), cell);
     if (cell.num === 0) this.floodFill(r, c);
     this.checkWin();
   }
 
   floodFill(r, c) {
-    const { ROWS, COLS } = CONFIG;
+    const { ROWS, COLS } = this.#CONFIG;
     const queue = [[r, c]];
     const seen = new Set();
     let wave = 0;
@@ -686,7 +700,7 @@ class Minesweeper404 {
       const cell = this.state.grid[cr][cc];
       if (cell.num > 0) continue;
 
-      for (const [dr, dc] of DIRECTIONS) {
+      for (const [dr, dc] of this.#DIRECTIONS) {
         const nr = cr + dr,
           nc = cc + dc;
         if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
@@ -697,7 +711,7 @@ class Minesweeper404 {
           this.state.openCount++;
           const g = this.findCellGroup(nr, nc);
           const delay = wave * 12;
-          setTimeout(() => this.renderCell(g, ncell), delay);
+          setTimeout(() => this.#renderCell(g, ncell), delay);
           if (ncell.num === 0) queue.push([nr, nc]);
         }
       }
@@ -710,12 +724,12 @@ class Minesweeper404 {
   }
 
   revealAllMines() {
-    const { ROWS, COLS } = CONFIG;
+    const { ROWS, COLS } = this.#CONFIG;
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
         const cell = this.state.grid[r][c];
         if (cell.mine) {
-          this.renderCell(this.findCellGroup(r, c), cell);
+          this.#renderCell(this.findCellGroup(r, c), cell);
         }
       }
     }
@@ -723,7 +737,7 @@ class Minesweeper404 {
 
   checkWin() {
     if (this.state.exploded || this.state.won) return;
-    const { ROWS, COLS } = CONFIG;
+    const { ROWS, COLS } = this.#CONFIG;
     const totalNonPermanent = ROWS * COLS - this.countPermanent();
     if (this.state.openCount === totalNonPermanent - this.state.mines) {
       this.state.won = true;
@@ -733,7 +747,7 @@ class Minesweeper404 {
   }
 
   countPermanent() {
-    const { ROWS, COLS } = CONFIG;
+    const { ROWS, COLS } = this.#CONFIG;
     let count = 0;
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
@@ -743,14 +757,14 @@ class Minesweeper404 {
     return count;
   }
 
-  // Batch HUD updates
+  // Batch Heads-Up Display updates
   updateHud() {
     const { mines, flags } = this.state;
-    this.hudElements.mines.textContent = `Mines: ${mines}`;
-    this.hudElements.flags.textContent = `Flags: ${flags}`;
+    this.hudElements.mines.textContent = `${this.#TEXT.EN.HUD_ELEMENT.MINES}: ${mines}`;
+    this.hudElements.flags.textContent = `${this.#TEXT.EN.HUD_ELEMENT.FLAGS}: ${flags}`;
   }
 
-  startTimer() {
+  #startTimer() {
     this.timerInterval = setInterval(() => {
       if (this.state.exploded || this.state.won) return;
       const t = ((performance.now() - this.state.startTime) / 1000).toFixed();
@@ -776,18 +790,18 @@ class Minesweeper404 {
     overlay.style.background = 'rgba(0,0,0,0.55)';
     overlay.classList.add('overlay-fade');
     overlay.innerHTML = `<div style="text-align:center;font-size:38px;font-weight:700;letter-spacing:2px;">${
-      won
-        ? 'Congratulations! 🎉<br><br>The page is not found,<br>but the winner is! 😉'
-        : 'The page is not found,<br>but the mine is! 😉'
-    }<div style="margin-top:16px;font-size:16px;font-weight:400"><button id="ms404-play-again" style="background:#333;border:1px solid #555;color:#fff;padding:10px 18px;border-radius:8px;cursor:pointer;font-size:14px">Play Again</button></div></div>`;
+      won ? this.#TEXT.EN.MESSAGE.CONGRATULATIONS : this.#TEXT.EN.MESSAGE.GAME_OVER
+    }<div style="margin-top:16px;font-size:16px;font-weight:400"><button id="ms404-play-again" style="background:#333;border:1px solid #555;color:#fff;padding:10px 18px;border-radius:8px;cursor:pointer;font-size:14px">${
+      this.#TEXT.EN.BUTTON.PLAY_AGAIN
+    }</button></div></div>`;
     this.container.appendChild(overlay);
-    overlay.querySelector('#ms404-play-again').addEventListener('click', () => this.resetGame());
+    overlay.querySelector('#ms404-play-again').addEventListener('click', () => this.#resetGame());
   }
 
   cleanup() {
     // Clean up timers and event state
     this.stopTimer();
-    this.clearLongPress();
+    this.#clearLongPress();
 
     // Remove event listeners if they exist
     if (this.svgRoot && this.eventsBound) {
@@ -801,13 +815,20 @@ class Minesweeper404 {
     this.eventsBound = false;
   }
 
-  resetGame() {
+  #resetGame() {
     this.cleanup();
     this.container.remove();
-    this.state = this.createEmptyState();
-    this.generatePermanent404Pattern();
-    this.placeMines();
-    this.calculateNumbers();
-    this.render();
+    this.state = this.#createEmptyState();
+    this.#generatePermanent404Pattern();
+    this.#placeMines();
+    this.#calculateNumbers();
+    this.#render();
   }
+}
+
+// Initialise Minesweeper404 game on page load
+if (document.readyState === 'complete') {
+  Minesweeper404.initialise();
+} else {
+  window.addEventListener('load', Minesweeper404.initialise);
 }
