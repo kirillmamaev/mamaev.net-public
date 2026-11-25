@@ -16,6 +16,9 @@
  * <bio-card-entry> is one line item in a section.
  * Attributes: heading (main line), detail (muted second line). Either can be left out.
  *
+ * Theme: CSS custom properties on <bio-card> (--bio-card-*), see the :host rule.
+ * The page loads the Karla and Young Serif fonts.
+ *
  * License: MIT
  */
 
@@ -41,16 +44,27 @@ export class BioCard extends LitElement {
   };
 
   static styles = css`
+    /*
+     * Australian Bush theme (see DESIGN.md): sandstone card, leaf-shaped corners,
+     * Young Serif name, Karla text, ochre eyebrows, blob-masked avatar.
+     * Colours meet WCAG AA on the card background (contrast in brackets).
+     */
     :host {
-      --bio-card-background: #f3f6f9;
-      --bio-card-border: #d9dee4;
-      --bio-card-text: #1f2328;
-      --bio-card-text-muted: #5f6368;
-      --bio-card-avatar-background: #ece5d8;
-      --bio-card-avatar-size: 80px;
-      --bio-card-avatar-border: #dde2e8;
-      --bio-card-shadow: 0 1px 3px rgba(16, 24, 40, 0.06), 0 6px 16px rgba(16, 24, 40, 0.08);
-      --bio-card-link: #0a58ca;
+      --bio-card-background: #f3e9d9; /* sandstone tint */
+      --bio-card-border: rgba(107, 79, 58, 0.16);
+      --bio-card-text: #2f4a3a; /* deep gum (8.1:1) */
+      --bio-card-text-muted: #6b4f3a; /* bark (6.2:1) */
+      --bio-card-accent: #8e3f1f; /* ochre deep: eyebrows and links (6.1:1) */
+      --bio-card-focus: #b5562c; /* ochre: focus rings */
+      --bio-card-ornament: #5e7d6b; /* eucalyptus: decoration only */
+      --bio-card-avatar-size: 88px;
+      --bio-card-avatar-background: #e9d8be; /* sandstone */
+      --bio-card-avatar-blob: #e3eadf; /* eucalyptus tint */
+      --bio-card-avatar-border: #fbf7f0; /* warm white */
+      --bio-card-radius: 36px 120px 36px 36px; /* leaf corner: big top-right */
+      --bio-card-shadow: 0 1px 2px rgba(74, 53, 38, 0.06), 0 12px 28px -10px rgba(74, 53, 38, 0.22);
+      --bio-card-font: 'Karla', system-ui, sans-serif;
+      --bio-card-heading-font: 'Young Serif', Georgia, serif;
 
       /* Flex column so the card fills the host when the page stretches it to the tallest card */
       display: flex;
@@ -60,16 +74,31 @@ export class BioCard extends LitElement {
       width: 100%;
       max-width: 464px;
       color: var(--bio-card-text);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-family: var(--bio-card-font);
     }
 
     article {
+      position: relative;
+      isolation: isolate;
       flex: 1;
-      padding: 20px 18px 22px;
+      padding: 22px 18px 24px;
       background: var(--bio-card-background);
       border: 1px solid var(--bio-card-border);
-      border-radius: 8px;
+      border-radius: var(--bio-card-radius);
       box-shadow: var(--bio-card-shadow);
+    }
+
+    /* Gum-leaf sprig in the bottom corner, behind the text */
+    .ornament {
+      position: absolute;
+      right: 12px;
+      bottom: 10px;
+      z-index: -1;
+      width: 48px;
+      height: 48px;
+      color: var(--bio-card-ornament);
+      opacity: 0.22;
+      pointer-events: none;
     }
 
     /* Same space on both sides of the avatar: card border to avatar, and avatar to text */
@@ -81,6 +110,8 @@ export class BioCard extends LitElement {
       align-items: center;
       margin-left: -18px;
       padding-left: var(--bio-card-header-inset);
+      /* Keeps long lines clear of the big top-right corner */
+      padding-right: 28px;
     }
 
     /* min-width: 0 lets the text column shrink, so long lines show an ellipsis */
@@ -89,29 +120,62 @@ export class BioCard extends LitElement {
       min-width: 0;
     }
 
-    .avatar {
+    /* Blob-masked avatar with an offset tinted blob behind it */
+    .avatar-frame {
+      position: relative;
       flex: none;
       width: var(--bio-card-avatar-size);
       height: var(--bio-card-avatar-size);
-      border: 4px solid var(--bio-card-avatar-border);
-      border-radius: 50%;
+    }
+
+    .avatar-frame::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      transform: translate(6px, 5px);
+      border-radius: 45% 55% 42% 58% / 55% 45% 58% 42%;
+      background: var(--bio-card-avatar-blob);
+    }
+
+    .avatar {
+      position: relative;
+      box-sizing: border-box;
+      width: 100%;
+      height: 100%;
+      border: 3px solid var(--bio-card-avatar-border);
+      border-radius: 58% 42% 55% 45% / 45% 55% 45% 55%;
       background: var(--bio-card-avatar-background);
       object-fit: cover;
+      animation: blob-morph 14s ease-in-out infinite alternate;
+    }
+
+    @keyframes blob-morph {
+      to {
+        border-radius: 46% 54% 44% 56% / 56% 44% 56% 44%;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .avatar {
+        animation: none;
+      }
     }
 
     .initials {
       display: grid;
       place-items: center;
-      font-size: calc(var(--bio-card-avatar-size) * 0.34);
-      font-weight: 600;
-      color: #6b5d45;
+      font-family: var(--bio-card-heading-font);
+      font-size: calc(var(--bio-card-avatar-size) * 0.32);
+      color: var(--bio-card-text-muted);
     }
 
     h2 {
-      margin: 0 0 4px;
-      font-size: 16px;
-      font-weight: 600;
+      margin: 0 0 2px;
+      font-family: var(--bio-card-heading-font);
+      font-size: 21px;
+      font-weight: 400;
       line-height: 1.4;
+      letter-spacing: -0.01em;
     }
 
     /* Lines that must stay on one line and end with "..." when too long */
@@ -132,15 +196,14 @@ export class BioCard extends LitElement {
       overflow: hidden;
       min-height: calc(var(--bio-card-headline-lines) * 1lh);
       margin: 0 0 2px;
-      font-size: 14px;
+      font-size: 14.5px;
+      font-weight: 500;
       line-height: 1.45;
     }
 
-
-
     .location {
       margin: 0;
-      font-size: 12.5px;
+      font-size: 13px;
       line-height: 1.5;
       color: var(--bio-card-text-muted);
     }
@@ -150,22 +213,24 @@ export class BioCard extends LitElement {
       flex-wrap: wrap;
       gap: 0 6px;
       margin: 2px 0 0;
-      font-size: 12.5px;
+      font-size: 13px;
+      font-weight: 600;
       line-height: 1.5;
       color: var(--bio-card-text-muted);
     }
 
     .contact a {
-      color: var(--bio-card-link);
+      color: var(--bio-card-accent);
       text-decoration: none;
     }
 
     .contact a:hover {
       text-decoration: underline;
+      text-underline-offset: 2px;
     }
 
     .contact a:focus-visible {
-      outline: 2px solid var(--bio-card-link);
+      outline: 2px solid var(--bio-card-focus);
       outline-offset: 2px;
       border-radius: 2px;
     }
@@ -178,10 +243,15 @@ export class BioCard extends LitElement {
       display: none;
     }
 
+    /* Section titles are uppercase eyebrows in ochre */
     h3 {
-      margin: 0 0 8px;
-      font-size: 14.5px;
-      font-weight: 600;
+      margin: 0 0 9px;
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1.4;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--bio-card-accent);
     }
 
     .section-body {
@@ -191,26 +261,26 @@ export class BioCard extends LitElement {
     }
 
     /*
-     * About: always 8 lines tall, cut after 8 lines with "...".
+     * About: always a fixed number of lines tall, cut after that with "...".
      * Line clamping counts lines across all paragraphs. It ignores flex gap,
      * so paragraphs are spaced with a margin, and min-height includes one gap.
      */
     .section-body.about {
-      --bio-card-about-lines: 8;
+      --bio-card-about-lines: 10;
 
       display: -webkit-box;
       -webkit-box-orient: vertical;
       -webkit-line-clamp: var(--bio-card-about-lines);
       overflow: hidden;
       min-height: calc(var(--bio-card-about-lines) * 1lh + 10px);
-      font-size: 12.25px;
-      line-height: 1.5;
+      font-size: 13px;
+      line-height: 1.55;
     }
 
     ::slotted(p) {
       margin: 0;
-      font-size: 12.25px;
-      line-height: 1.5;
+      font-size: 13px;
+      line-height: 1.55;
       color: var(--bio-card-text-muted);
     }
 
@@ -220,15 +290,29 @@ export class BioCard extends LitElement {
 
     /*
      * Narrow cards (mobile screens): more room instead of cutting text.
-     * Headline 3 lines, About 14 lines, location wraps onto 2 lines.
+     * Headline 3 lines, About 15 lines, location wraps onto 2 lines.
      */
     @container (max-width: 359px) {
+      /* A smaller leaf corner, avatar and name, so the text keeps enough room */
+      article {
+        border-radius: 28px 80px 28px 28px;
+      }
+
+      /* Set on header, not :host: a container query can't style the container itself */
+      header {
+        --bio-card-avatar-size: 72px;
+      }
+
+      h2 {
+        font-size: 18px;
+      }
+
       .headline {
         --bio-card-headline-lines: 3;
       }
 
       .section-body.about {
-        --bio-card-about-lines: 14;
+        --bio-card-about-lines: 15;
       }
 
       .location {
@@ -244,6 +328,11 @@ export class BioCard extends LitElement {
     @container (max-width: 299px) {
       .headline {
         --bio-card-headline-lines: 4;
+      }
+
+      .location {
+        -webkit-line-clamp: 3;
+        min-height: 3lh;
       }
     }
   `;
@@ -307,20 +396,31 @@ export class BioCard extends LitElement {
   #renderAvatar() {
     if (this.avatar && !this._avatarFailed) {
       // Decorative by default: the name is right next to it
-      return html`<img
-        class="avatar"
-        part="avatar"
-        src=${this.avatar}
-        alt=${this.avatarAlt}
-        @error=${() => (this._avatarFailed = true)}
-      />`;
+      return html`<span class="avatar-frame"
+        ><img
+          class="avatar"
+          part="avatar"
+          src=${this.avatar}
+          alt=${this.avatarAlt}
+          @error=${() => (this._avatarFailed = true)}
+      /></span>`;
     }
-    return html`<div class="avatar initials" part="avatar" aria-hidden="true">${this.#initials}</div>`;
+    return html`<span class="avatar-frame" aria-hidden="true"
+      ><span class="avatar initials" part="avatar">${this.#initials}</span></span
+    >`;
   }
 
   render() {
     return html`
       <article part="card" aria-labelledby="name">
+        <svg class="ornament" viewBox="0 0 72 72" aria-hidden="true" focusable="false">
+          <path d="M10 66C24 52 38 34 64 8" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
+          <path d="M34 40C22 30 22 16 30 8C38 18 40 30 34 40Z" fill="currentColor" />
+          <path d="M46 26C46 14 54 6 66 4C64 16 58 24 46 26Z" fill="currentColor" />
+          <path d="M24 52C12 50 6 42 4 32C16 32 24 40 24 52Z" fill="currentColor" />
+          <circle cx="50" cy="40" r="5" fill="currentColor" />
+          <circle cx="60" cy="34" r="4" fill="currentColor" />
+        </svg>
         <header>
           ${this.#renderAvatar()}
           <div>
@@ -375,14 +475,15 @@ export class BioCardEntry extends LitElement {
 
     .heading {
       font-size: 14px;
+      font-weight: 500;
       line-height: 1.5;
-      color: var(--bio-card-text, #1f2328);
+      color: var(--bio-card-text, #2f4a3a);
     }
 
     .detail {
       font-size: 12.5px;
       line-height: 1.5;
-      color: var(--bio-card-text-muted, #5f6368);
+      color: var(--bio-card-text-muted, #6b4f3a);
     }
 
     .heading + .detail {
