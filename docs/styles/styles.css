@@ -3,12 +3,28 @@ body {
   background-color: #ffffff;
 }
 
-/* Home page: the title on top, the cards fill the rest of the screen */
+/*
+ * Home page: the title on top, the cards fill the rest of the screen.
+ * Australian Bush theme (see DESIGN.md): warm white with fine grain, a soft
+ * wattle "rising sun" glow at the top, and layered gum hills along the bottom.
+ */
 .home {
+  --hills-height: clamp(72px, 11vw, 150px);
+
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
   min-height: 100vh;
   min-height: 100dvh;
+  /* Keeps the cards above the front hills */
+  padding-bottom: calc(var(--hills-height) * 0.55);
+  color: #2f4a3a;
+  font-family: 'Karla', system-ui, sans-serif;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 160' preserveAspectRatio='none'%3E%3Cpath fill='%23e3eadf' d='M0 92C240 42 480 44 720 82s480 -26 720 -14V160H0Z'/%3E%3Cpath fill='%235e7d6b' fill-opacity='.55' d='M0 122C300 84 520 112 760 102s460 26 680 2V160H0Z'/%3E%3Cpath fill='%232f4a3a' d='M0 146C260 126 560 150 820 138s460 10 620 4V160H0Z'/%3E%3C/svg%3E") bottom / 100% var(--hills-height) no-repeat,
+    radial-gradient(ellipse 70% 45% at 50% 0%, rgba(232, 185, 49, 0.18), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .29 0 0 0 0 .21 0 0 0 0 .15 .09 0 0 0 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    #fbf7f0;
 }
 
 /*
