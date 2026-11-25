@@ -97,7 +97,8 @@ export class BioCard extends LitElement {
       width: 48px;
       height: 48px;
       color: var(--bio-card-ornament);
-      opacity: 0.22;
+      /* Faint enough that text on top keeps about 90% of its contrast (7.2:1 and 5.6:1) */
+      opacity: 0.1;
       pointer-events: none;
     }
 
@@ -311,8 +312,12 @@ export class BioCard extends LitElement {
         --bio-card-headline-lines: 3;
       }
 
+      /* Cut after 15 lines, but no reserved height: only one card is visible at a time
+         on mobile, so aligning sections across cards isn't worth the empty space */
       .section-body.about {
         --bio-card-about-lines: 15;
+
+        min-height: 0;
       }
 
       .location {
