@@ -825,6 +825,7 @@ class Minesweeper404 {
     this.#state.flags += cell.flag ? 1 : -1;
     this.#updateHud();
     this.#renderCell(r, c);
+    this.#checkWin();
   }
 
   #openCell(r, c) {
@@ -875,15 +876,23 @@ class Minesweeper404 {
     const state = this.#state;
     if (state.exploded || state.won) return;
     const { ROWS, COLS } = this.#config;
-    const safeCells = ROWS * COLS - state.permanentCount - state.mines;
-    if (state.openCount !== safeCells) return;
+    const cells = state.grid.flat();
+    const allSafeOpen = state.openCount === ROWS * COLS - state.permanentCount - state.mines;
+    // Equal counts plus every mine flagged means there are no wrong flags
+    const allMinesFlagged =
+      state.minesPlaced && state.flags === state.mines && cells.every((cell) => !cell.mine || cell.flag);
+    if (!allSafeOpen && !allMinesFlagged) return;
 
     state.won = true;
-    // Flag every remaining mine
-    for (const cell of state.grid.flat()) {
+    // Complete the board: flag every remaining mine and open every remaining safe tile
+    for (const cell of cells) {
       if (cell.mine && !cell.flag) {
         cell.flag = true;
         state.flags++;
+        this.#renderCell(cell.r, cell.c);
+      } else if (!cell.mine && !cell.open && !cell.permanent) {
+        cell.open = true;
+        state.openCount++;
         this.#renderCell(cell.r, cell.c);
       }
     }
