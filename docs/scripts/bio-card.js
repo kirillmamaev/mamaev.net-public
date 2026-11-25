@@ -162,6 +162,102 @@ export class BioCard extends LitElement {
       }
     }
 
+    /*
+     * Motion (see DESIGN.md), all off for reduced motion:
+     * - Reveal: the card rises in, then its header and sections follow one by one.
+     *   The page staggers cards with --bio-card-reveal-delay.
+     * - Hover or keyboard focus: the card lifts, the avatar blob drifts, the sprig grows.
+     * - The gum-leaf sprig sways gently all the time.
+     * "backwards" fill, not "both": the start frame applies during the delay,
+     * and nothing is held after the end, so hover transforms still work.
+     */
+    @media (prefers-reduced-motion: no-preference) {
+      :host {
+        --bio-card-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+        animation: card-rise 0.8s var(--bio-card-ease) var(--bio-card-reveal-delay, 0s) backwards;
+      }
+
+      header,
+      section {
+        animation: content-rise 0.6s var(--bio-card-ease) backwards;
+      }
+
+      header {
+        animation-delay: calc(var(--bio-card-reveal-delay, 0s) + 200ms);
+      }
+
+      section:nth-of-type(1) {
+        animation-delay: calc(var(--bio-card-reveal-delay, 0s) + 300ms);
+      }
+
+      section:nth-of-type(2) {
+        animation-delay: calc(var(--bio-card-reveal-delay, 0s) + 380ms);
+      }
+
+      section:nth-of-type(3) {
+        animation-delay: calc(var(--bio-card-reveal-delay, 0s) + 460ms);
+      }
+
+      article {
+        transition:
+          transform 0.4s var(--bio-card-ease),
+          box-shadow 0.4s var(--bio-card-ease);
+      }
+
+      :host(:hover) article,
+      article:focus-within {
+        transform: translateY(-4px);
+        box-shadow:
+          0 2px 4px rgba(74, 53, 38, 0.06),
+          0 22px 40px -14px rgba(74, 53, 38, 0.3);
+      }
+
+      .avatar-frame::before {
+        transition: transform 0.6s var(--bio-card-ease);
+      }
+
+      :host(:hover) .avatar-frame::before,
+      article:focus-within .avatar-frame::before {
+        transform: translate(9px, 8px) rotate(8deg);
+      }
+
+      /* rotate and scale are separate properties, so the sway and hover don't clash */
+      .ornament {
+        transform-origin: 14% 92%; /* the base of the stem */
+        animation: leaf-sway 6s ease-in-out infinite alternate;
+        transition: scale 0.6s var(--bio-card-ease);
+      }
+
+      :host(:hover) .ornament,
+      article:focus-within .ornament {
+        scale: 1.15;
+      }
+    }
+
+    @keyframes card-rise {
+      from {
+        opacity: 0;
+        transform: translateY(24px) scale(0.98);
+      }
+    }
+
+    @keyframes content-rise {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+    }
+
+    @keyframes leaf-sway {
+      from {
+        rotate: -4deg;
+      }
+      to {
+        rotate: 5deg;
+      }
+    }
+
     .initials {
       display: grid;
       place-items: center;
