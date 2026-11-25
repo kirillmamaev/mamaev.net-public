@@ -24,13 +24,17 @@ site-header:not(:defined) {
  * Cards layout
  * Wide screens: cards sit in a row with equal space between them and to the screen edges.
  * Narrow screens: a horizontal carousel that snaps to one card at a time.
+ * Grid, not flex: an auto-sized grid row is as tall as its tallest card, and cards
+ * stretch to it, so all cards are the same height.
  */
 .cards {
   --cards-spacing: 24px;
 
-  display: flex;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 464px);
   justify-content: space-evenly;
-  align-items: center;
+  align-content: center;
   /* space-evenly adds the same free space at the edges and between cards,
      so the side padding must equal the gap to keep all spaces equal */
   flex: 1;
@@ -40,14 +44,15 @@ site-header:not(:defined) {
 }
 
 .cards > bio-card {
-  flex: 0 1 464px;
   min-width: 0;
 }
 
 /* Carousel. The breakpoint grows with the number of cards, so cards never get too narrow. */
 @media (max-width: 767px) {
   .cards {
-    justify-content: flex-start;
+    /* safe center: centres a single card, but starts at the left edge when cards overflow */
+    grid-auto-columns: min(calc(100% - 32px), 464px);
+    justify-content: safe center;
     gap: 12px;
     padding: 24px 20px;
     overflow-x: auto;
@@ -57,23 +62,14 @@ site-header:not(:defined) {
   }
 
   .cards > bio-card {
-    flex: 0 0 min(calc(100% - 32px), 464px);
     scroll-snap-align: center;
-  }
-
-  /* Auto margins centre a single card without clipping the first card when it overflows */
-  .cards > bio-card:first-child {
-    margin-left: auto;
-  }
-
-  .cards > bio-card:last-child {
-    margin-right: auto;
   }
 }
 
 @media (min-width: 768px) and (max-width: 1099px) {
   .cards:has(> bio-card:nth-child(3)) {
-    justify-content: flex-start;
+    grid-auto-columns: min(calc(100% - 48px), 464px);
+    justify-content: safe center;
     gap: 16px;
     padding: 32px 24px;
     overflow-x: auto;
@@ -83,16 +79,7 @@ site-header:not(:defined) {
   }
 
   .cards:has(> bio-card:nth-child(3)) > bio-card {
-    flex: 0 0 min(calc(100% - 48px), 464px);
     scroll-snap-align: center;
-  }
-
-  .cards:has(> bio-card:nth-child(3)) > bio-card:first-child {
-    margin-left: auto;
-  }
-
-  .cards:has(> bio-card:nth-child(3)) > bio-card:last-child {
-    margin-right: auto;
   }
 }
 

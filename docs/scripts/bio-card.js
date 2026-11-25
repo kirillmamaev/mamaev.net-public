@@ -52,7 +52,10 @@ export class BioCard extends LitElement {
       --bio-card-shadow: 0 1px 3px rgba(16, 24, 40, 0.06), 0 6px 16px rgba(16, 24, 40, 0.08);
       --bio-card-link: #0a58ca;
 
-      display: block;
+      /* Flex column so the card fills the host when the page stretches it to the tallest card */
+      display: flex;
+      flex-direction: column;
+      container-type: inline-size;
       box-sizing: border-box;
       width: 100%;
       max-width: 464px;
@@ -61,6 +64,7 @@ export class BioCard extends LitElement {
     }
 
     article {
+      flex: 1;
       padding: 20px 18px 22px;
       background: var(--bio-card-background);
       border: 1px solid var(--bio-card-border);
@@ -77,6 +81,12 @@ export class BioCard extends LitElement {
       align-items: center;
       margin-left: -18px;
       padding-left: var(--bio-card-header-inset);
+    }
+
+    /* min-width: 0 lets the text column shrink, so long lines show an ellipsis */
+    header > div {
+      flex: 1;
+      min-width: 0;
     }
 
     .avatar {
@@ -104,11 +114,29 @@ export class BioCard extends LitElement {
       line-height: 1.4;
     }
 
+    /* Lines that must stay on one line and end with "..." when too long */
+    h2,
+    .location {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    /* Always 2 lines tall: a short headline gets a blank line, a long one ends with "..." */
     .headline {
+      --bio-card-headline-lines: 2;
+
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: var(--bio-card-headline-lines);
+      overflow: hidden;
+      min-height: calc(var(--bio-card-headline-lines) * 1lh);
       margin: 0 0 2px;
       font-size: 14px;
       line-height: 1.45;
     }
+
+
 
     .location {
       margin: 0;
@@ -162,11 +190,61 @@ export class BioCard extends LitElement {
       gap: 10px;
     }
 
+    /*
+     * About: always 8 lines tall, cut after 8 lines with "...".
+     * Line clamping counts lines across all paragraphs. It ignores flex gap,
+     * so paragraphs are spaced with a margin, and min-height includes one gap.
+     */
+    .section-body.about {
+      --bio-card-about-lines: 8;
+
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: var(--bio-card-about-lines);
+      overflow: hidden;
+      min-height: calc(var(--bio-card-about-lines) * 1lh + 10px);
+      font-size: 12.25px;
+      line-height: 1.5;
+    }
+
     ::slotted(p) {
       margin: 0;
       font-size: 12.25px;
       line-height: 1.5;
       color: var(--bio-card-text-muted);
+    }
+
+    ::slotted(p:not(:first-of-type)) {
+      margin-top: 10px;
+    }
+
+    /*
+     * Narrow cards (mobile screens): more room instead of cutting text.
+     * Headline 3 lines, About 14 lines, location wraps onto 2 lines.
+     */
+    @container (max-width: 359px) {
+      .headline {
+        --bio-card-headline-lines: 3;
+      }
+
+      .section-body.about {
+        --bio-card-about-lines: 14;
+      }
+
+      .location {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        min-height: 2lh;
+        white-space: normal;
+      }
+    }
+
+    /* Very narrow cards (360px screens and below): long headlines need a 4th line */
+    @container (max-width: 299px) {
+      .headline {
+        --bio-card-headline-lines: 4;
+      }
     }
   `;
 
@@ -256,7 +334,7 @@ export class BioCard extends LitElement {
           ({ slot, label }) => html`
             <section ?hidden=${!this._filledSlots.has(slot)} aria-labelledby="${slot}-heading">
               <h3 id="${slot}-heading">${label}</h3>
-              <div class="section-body">
+              <div class="section-body ${slot}">
                 <slot name=${slot} @slotchange=${() => this.#updateFilledSlots()}></slot>
               </div>
             </section>
@@ -279,8 +357,20 @@ export class BioCardEntry extends LitElement {
       padding-left: 1px;
     }
 
+    /* Each line stays on one line and ends with "..." when too long */
     p {
       margin: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    /* Narrow cards (mobile screens): skills lines wrap instead of being cut.
+       The query finds the <bio-card> container around this entry. */
+    @container (max-width: 359px) {
+      :host([slot='skills']) p {
+        white-space: normal;
+      }
     }
 
     .heading {
