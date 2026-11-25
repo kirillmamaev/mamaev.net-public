@@ -67,6 +67,34 @@ export class SiteHeader extends LitElement {
       top: -0.24em;
       vertical-align: middle;
     }
+
+    /* Motion (see DESIGN.md): the title drops in, then the sprig sways like a leaf in a breeze */
+    @media (prefers-reduced-motion: no-preference) {
+      h1 {
+        animation: title-drop 0.8s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+      }
+
+      .sprig {
+        transform-origin: 12% 94%; /* the base of the stem */
+        animation: sprig-sway 5s ease-in-out 0.8s infinite alternate;
+      }
+    }
+
+    @keyframes title-drop {
+      from {
+        opacity: 0;
+        transform: translateY(-12px);
+      }
+    }
+
+    @keyframes sprig-sway {
+      from {
+        rotate: -6deg;
+      }
+      to {
+        rotate: 8deg;
+      }
+    }
   `;
 
   constructor() {
