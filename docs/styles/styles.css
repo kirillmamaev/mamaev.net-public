@@ -3,15 +3,21 @@ body {
   background-color: #ffffff;
 }
 
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+/* Home page: the title on top, the cards fill the rest of the screen */
+.home {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/*
+ * Reserve the header's height until <site-header> loads, so the cards don't jump down.
+ * Matches the component's default font size x line height + vertical padding.
+ */
+site-header:not(:defined) {
+  display: block;
+  height: calc(clamp(2rem, 6vw, 3rem) * 1.2 + 24px);
 }
 
 /*
@@ -27,10 +33,9 @@ body {
   align-items: center;
   /* space-evenly adds the same free space at the edges and between cards,
      so the side padding must equal the gap to keep all spaces equal */
+  flex: 1;
   gap: var(--cards-spacing);
   box-sizing: border-box;
-  min-height: 100vh;
-  min-height: 100dvh;
   padding: 32px var(--cards-spacing);
 }
 
