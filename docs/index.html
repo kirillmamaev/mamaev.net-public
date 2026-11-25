@@ -21,12 +21,36 @@
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css">
   <link rel="stylesheet" href="styles/styles.css">
+  <script type="module" src="scripts/bio-card.js"></script>
 </head>
 
 <body>
-  <div class="position-center content-allign-center">
-    <h1>mamaev.net</h1>
-    <a href="mailto:kirill@mamaev.net">kirill@mamaev.net</a>
-  </div>
+  <h1 class="visually-hidden">mamaev.net</h1>
+
+  <main class="cards" aria-label="Bio cards" tabindex="0">
+    <bio-card
+      name="Kirill Mamaev"
+      avatar="images/kirillmamaev.jpg"
+      headline="Staff Software Engineer - Frontend Practice Lead at Mable"
+      location="Sydney, New South Wales, Australia"
+      email="kirill@mamaev.net"
+      linkedin="kirillmamaev"
+    >
+      <p slot="about">
+        I have over 20 years of experience in tech. I build with Angular and TypeScript, and I focus on accessibility,
+        scalability and performance.
+      </p>
+      <p slot="about">
+        At Mable, I lead the frontend practice, mentor engineers and work with product and design to ship accessible web
+        apps. Before that, I spent 14 years at Google in technical product support, tooling and cross-team work.
+      </p>
+
+      <bio-card-entry slot="experience" heading="Staff Software Engineer at Mable" detail="Jan 2023 - Present"></bio-card-entry>
+      <bio-card-entry slot="experience" heading="Senior Software Engineer at Mable" detail="Feb 2022 - Jan 2023"></bio-card-entry>
+      <bio-card-entry slot="experience" detail="9 total experiences"></bio-card-entry>
+
+      <bio-card-entry slot="skills" heading="Frontend Development, Angular, TypeScript" detail="22 total skills"></bio-card-entry>
+    </bio-card>
+  </main>
 </body>
 </html>
